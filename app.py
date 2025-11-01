@@ -101,7 +101,7 @@ col1, col2 = st.columns(2)
 with col1:
     st.header('') # ヘッダーを空にする
     input_text = st.text_area(
-        "Premiereでキャプションをテキストファイルに書き出し。中身をペーストして Ctrl+Enter ！", 
+        "Premiereでキャプションをテキストで書き出し。中身をペーストし Ctrl+Enter ！", 
         height=500, 
         placeholder="""00;00;00;00 - 00;00;02;29
 N ああああ
