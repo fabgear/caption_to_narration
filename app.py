@@ -66,8 +66,8 @@ st.title('Caption to Narration')
 col1, col2 = st.columns(2)
 
 with col1:
-    st.header('Caption')
-    input_text = st.text_area("Premiereで書き出したキャプションをペーストして下さい", height=500, placeholder="例 00;00;00;00 - 00;00;02;29\nＮ　あああ")
+    st.header('')
+    input_text = st.text_area("Premiereで書き出したキャプションをペーストして、Ctrl+Enter", height=500, placeholder="例 00;00;00;00 - 00;00;02;29\nＮ　あああ")
 
 with col2:
     st.header('')
