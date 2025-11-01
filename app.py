@@ -76,16 +76,8 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.header('')
-    input_text = st.text_area("Premiereで書き出したキャプションをペーストして [Ctrl+Enter]  ", height=500, placeholder="例\n\n
-    00;00;00;00 - 00;00;02;29\n
-    ああああ　,　Ｎ　あああ　　　　　などが\n\n
-
-    ００００　　Ｎ　あああ　（～０２）　　　\n\n
-    
-    と変換されます。\n
-    Ｎは強制挿入されるのでＶＯ等の場合は\n\n
-    
-    ００００　　Ｎ　ＶＯ　あああ　（～０２）　　となります。")
+    input_text = st.text_area("Premiereで書き出したキャプションをペーストして [Ctrl+Enter] ", height=500, placeholder="例\n\n00;00;00;00 - 00;00;02;29\nああああ　,　Ｎ　あああ　　　　　などが\n\n００００　　Ｎ　あああ　（～０２）　　　\n\nと変換されます。
+    \nＮは強制挿入されるのでＶＯ等の場合は\n\n００００　　Ｎ　ＶＯ　あああ　（～０２）　　となります。")
 
 with col2:
     st.header('')
