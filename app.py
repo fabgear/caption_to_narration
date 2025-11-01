@@ -3,10 +3,15 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- 【話者名判定ロジック改善版】▼▼▼
 # ===============================================================
 def convert_narration_script(text):
-    to_zenkaku = str.maketrans('0123456789', '０１２３４５６７８９')
+    # --- 変換テーブルの準備 ---
+    to_zenkaku_num = str.maketrans('0123456789', '０１２３４５６７８９')
+    hankaku_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '
+    zenkaku_chars = 'ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９　'
+    to_zenkaku_all = str.maketrans(hankaku_chars, zenkaku_chars)
+
     lines = [line.strip() for line in text.strip().split('\n') if line.strip()]
     blocks = []
     for i in range(0, len(lines), 2):
@@ -25,22 +30,33 @@ def convert_narration_script(text):
         if rounded_sec >= 60:
             start_mm += 1
             rounded_sec = 0
-        formatted_start_time = f"{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku)
+        formatted_start_time = f"{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
 
-        text_match = re.match(r'([NＮ])\s*(.*)', block['text'])
-        body = text_match.group(2).strip() if text_match else block['text'].strip()
-        if not body: body = "※注意！本文なし！"
+        speaker_symbol = 'Ｎ'
+        text_content = block['text'].strip()
         
-        # --- ▼▼▼ ここからが追加するコードです ▼▼▼ ---
-        # 変換したい半角文字のリスト
-        hankaku = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '
-        # 対応する全角文字のリスト
-        zenkaku = 'ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９　'
-        # 変換テーブルを作成
-        zenkaku_table = str.maketrans(hankaku, zenkaku)
-        # 実際に本文（body）を変換
-        body = body.translate(zenkaku_table)
-        # --- ▲▲▲ ここまでが追加したコードです ▲▲▲ ---
+        match = re.match(r'^(\S+)\s+(.*)', text_content)
+
+        if match:
+            raw_speaker = match.group(1)
+            body = match.group(2).strip()
+            
+            if raw_speaker.upper() == 'N':
+                speaker_symbol = 'Ｎ'
+            else:
+                speaker_symbol = raw_speaker.translate(to_zenkaku_all)
+        else:
+            if text_content.startswith('Ｎ '):
+                body = text_content[2:].strip()
+            elif text_content.startswith('N '):
+                 body = text_content[2:].strip()
+            else:
+                body = text_content
+
+        if not body:
+            body = "※注意！本文なし！"
+        
+        body = body.translate(to_zenkaku_all)
         
         end_string = ""
         add_blank_line = True
@@ -56,31 +72,57 @@ def convert_narration_script(text):
 
         if add_blank_line:
             if start_mm == end_mm:
-                formatted_end_time = f"{end_ss:02d}".translate(to_zenkaku)
+                formatted_end_time = f"{end_ss:02d}".translate(to_zenkaku_num)
             else:
-                formatted_end_time = f"{end_mm:02d}{end_ss:02d}".translate(to_zenkaku)
+                formatted_end_time = f"{end_mm:02d}{end_ss:02d}".translate(to_zenkaku_num)
             end_string = f"　（～{formatted_end_time}）"
             
-        output_lines.append(f"{formatted_start_time}　　Ｎ　{body}{end_string}")
+        output_lines.append(f"{formatted_start_time}　　{speaker_symbol}　{body}{end_string}")
         if add_blank_line and i < len(blocks) - 1:
             output_lines.append("")
             
     return "\n".join(output_lines)
+
 # ===============================================================
-# ▼▼▼ ここからがStreamlitの魔法の部分です ▼▼▼
+# ▼▼▼ ここからがStreamlitの画面を作る部分です【お客様の修正を反映＆エラー修正版】▼▼▼
 # ===============================================================
-st.set_page_config(layout="wide") # 画面を広く使う設定
+st.set_page_config(
+    page_title="Caption to Narration",
+    page_icon="📝",
+    layout="wide"
+)
 st.title('Caption to Narration')
 
 col1, col2 = st.columns(2)
 
 with col1:
-    st.header('')
-    input_text = st.text_area("Premiereで書き出したキャプションをペーストして [Ctrl+Enter] ", height=500, placeholder="例\n\n00;00;00;00 - 00;00;02;29\nああああ　,　Ｎ　あああ　　　　　などが\n\n００００　　Ｎ　あああ　（～０２）　　　\n\nと変換されます。
-    \nＮは強制挿入されるのでＶＯ等の場合は\n\n００００　　Ｎ　ＶＯ　あああ　（～０２）　　となります。")
+    st.header('') # ヘッダーを空にする
+    input_text = st.text_area(
+        "Premiereで書き出したキャプションをペーストして [Ctrl+Enter] ", 
+        height=500, 
+        # エラーの原因だった "..." を """...""" に修正し、説明文も最新化
+        placeholder="""例：
+00;00;00;00 - 00;00;02;29
+N ああああ
+
+00;00;15;14 - 00;00;18;13
+VO ああああ
+
+上のテキストが、下のように変換されます。
+------------------------------------------------
+００００　　Ｎ　ああああ　（～０２）
+
+００１５　　ＶＯ　ああああ
+------------------------------------------------
+【話者名のルール】
+・行頭に「N」や「n」があれば「Ｎ」になります。
+・行頭に「VO」や「木村」などがあれば、それが話者名になります。
+・話者名がない場合は、自動で「Ｎ」が補われます。
+"""
+    )
 
 with col2:
-    st.header('')
+    st.header('') # ヘッダーを空にする
     if input_text:
         try:
             converted_text = convert_narration_script(input_text)
