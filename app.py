@@ -101,21 +101,16 @@ col1, col2 = st.columns(2)
 with col1:
     st.header('') # ヘッダーを空にする
     input_text = st.text_area(
-        "Premiereで書き出したキャプションをペーストして Ctrl+Enter ！", 
+        "Premiereでキャプションをテキストファイルに書き出し。中身をペーストして Ctrl+Enter ！", 
         height=500, 
-        placeholder="""Premiereでキャプションをテキストで書き出したフォーマット
-
+        placeholder="""
+        
 00;00;00;00 - 00;00;02;29
 N ああああ
-
-00;00;15;14 - 00;00;18;13
-VO ああああ
 
 👇変換されます
 
 ００００　　Ｎ　ああああ　（～０２）
-
-００１５　　ＶＯ　ああああ　（～１８）
 
 
 【変換ルール】
