@@ -61,16 +61,16 @@ def convert_narration_script(text):
 # ▼▼▼ ここからがStreamlitの魔法の部分です ▼▼▼
 # ===============================================================
 st.set_page_config(layout="wide") # 画面を広く使う設定
-st.title('ナレーション原稿 変換ツール')
+st.title('Caption to Narration')
 
 col1, col2 = st.columns(2)
 
 with col1:
-    st.header('元のテキスト')
-    input_text = st.text_area("ここにジャプションの書き出しをペーストして下さい", height=500, placeholder="00;00;00;00 - 00;00;02;29\nＮ　あああ")
+    st.header('Caption')
+    input_text = st.text_area("Premiereで書き出したキャプションをペーストして下さい", height=500, placeholder="例 00;00;00;00 - 00;00;02;29\nＮ　あああ")
 
 with col2:
-    st.header('変換結果')
+    st.header('')
     if input_text:
         try:
             converted_text = convert_narration_script(input_text)
