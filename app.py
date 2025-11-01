@@ -76,9 +76,7 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.header('')
-    input_text = st.text_area("Premiereで書き出したキャプションをペーストして [Ctrl+Enter]  ", height=500, placeholder="
-    例\n\n
-    
+    input_text = st.text_area("Premiereで書き出したキャプションをペーストして [Ctrl+Enter]  ", height=500, placeholder="例\n\n
     00;00;00;00 - 00;00;02;29\n
     ああああ　,　Ｎ　あああ　　　　　などが\n\n
 
