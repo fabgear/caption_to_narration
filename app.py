@@ -4,7 +4,6 @@ import math
 
 # ===============================================================
 # ▼▼▼ ツールの本体（エンジン部分）▼▼▼
-# ※この関数は、これまで私たちが作り上げてきた変換ロジックそのものです。
 # ===============================================================
 def convert_narration_script(text):
     to_zenkaku = str.maketrans('0123456789', '０１２３４５６７８９')
@@ -32,6 +31,17 @@ def convert_narration_script(text):
         body = text_match.group(2).strip() if text_match else block['text'].strip()
         if not body: body = "※注意！本文なし！"
         
+        # --- ▼▼▼ ここからが追加するコードです ▼▼▼ ---
+        # 変換したい半角文字のリスト
+        hankaku = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '
+        # 対応する全角文字のリスト
+        zenkaku = 'ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９　'
+        # 変換テーブルを作成
+        zenkaku_table = str.maketrans(hankaku, zenkaku)
+        # 実際に本文（body）を変換
+        body = body.translate(zenkaku_table)
+        # --- ▲▲▲ ここまでが追加したコードです ▲▲▲ ---
+        
         end_string = ""
         add_blank_line = True
 
@@ -56,7 +66,6 @@ def convert_narration_script(text):
             output_lines.append("")
             
     return "\n".join(output_lines)
-
 # ===============================================================
 # ▼▼▼ ここからがStreamlitの魔法の部分です ▼▼▼
 # ===============================================================
