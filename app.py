@@ -84,7 +84,7 @@ def convert_narration_script(text):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ ここからがStreamlitの画面を作る部分です【お客様の修正を反映＆エラー修正版】▼▼▼
+# ▼▼▼ ここからがStreamlitの画面を作る部分です ▼▼▼
 # ===============================================================
 st.set_page_config(
     page_title="Caption to Narration",
@@ -93,6 +93,9 @@ st.set_page_config(
 )
 st.title('Caption to Narration')
 
+# --- ▼▼▼ ここにCSSを書き込むための「おまじない」を追加 ▼▼▼ ---
+st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
+
 col1, col2 = st.columns(2)
 
 with col1:
@@ -100,7 +103,6 @@ with col1:
     input_text = st.text_area(
         "Premiereで書き出したキャプションをペーストして [Ctrl+Enter] ", 
         height=500, 
-        # エラーの原因だった "..." を """...""" に修正し、説明文も最新化
         placeholder="""例：
 00;00;00;00 - 00;00;02;29
 N ああああ
