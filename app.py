@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- 【全バグ修正・最終完成版】▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （変更なし）▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 変換テーブルの準備 ---
@@ -13,11 +13,8 @@ def convert_narration_script(text):
     to_zenkaku_all = str.maketrans(hankaku_chars, zenkaku_chars)
     to_hankaku_time = str.maketrans('０１２３４５６７８９：〜', '0123456789:~')
 
-    # --- ▼▼▼【バグ修正】空行を消さずに、そのまま行のリストを作成する ▼▼▼ ---
     lines = text.strip().split('\n')
-    
     start_index = -1
-    # --- ▼▼▼【バグ修正】":" と ";" の両方に対応する正規表現に修正 ▼▼▼ ---
     time_pattern = r'(\d{2})[:;](\d{2})[:;](\d{2})(?:[.;](\d{2}))?\s*-\s*(\d{2})[:;](\d{2})[:;](\d{2})(?:[.;](\d{2}))?'
     
     for i, line in enumerate(lines):
@@ -26,31 +23,22 @@ def convert_narration_script(text):
             start_index = i
             break
             
-    if start_index == -1:
-        return "エラー：変換可能なタイムコードが見つかりませんでした。"
+    if start_index == -1: return "エラー：変換可能なタイムコードが見つかりませんでした。"
         
     relevant_lines = lines[start_index:]
 
-    # --- ▼▼▼【バグ修正】より堅牢なペア作成ロジックに修正 ▼▼▼ ---
     blocks = []
     i = 0
     while i < len(relevant_lines):
         current_line = relevant_lines[i].strip()
         normalized_line = current_line.translate(to_hankaku_time).replace('~', '-')
-        
-        # 現在行がタイムコード形式に一致するかチェック
         if re.match(time_pattern, normalized_line):
-            time_val = current_line
-            text_val = "" # デフォルトの本文は空
-            
-            # 次の行が存在し、かつそれがタイムコード形式ではない場合、それを本文とする
+            time_val = current_line; text_val = ""
             if i + 1 < len(relevant_lines):
                 next_line = relevant_lines[i+1].strip()
                 next_normalized = next_line.translate(to_hankaku_time).replace('~', '-')
                 if not re.match(time_pattern, next_normalized):
-                    text_val = next_line
-                    i += 1 # 本文行も消費したので、インデックスを一つ進める
-            
+                    text_val = next_line; i += 1
             blocks.append({'time': time_val, 'text': text_val})
         i += 1
 
@@ -70,10 +58,8 @@ def convert_narration_script(text):
             if start_mm >= 60:
                 start_hh += 1; start_mm = 0
         
-        if start_hh > 0:
-            formatted_start_time = f"{start_hh:02d}{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
-        else:
-            formatted_start_time = f"{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
+        if start_hh > 0: formatted_start_time = f"{start_hh:02d}{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
+        else: formatted_start_time = f"{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
 
         speaker_symbol = 'Ｎ'
         text_content = block['text']
@@ -98,9 +84,8 @@ def convert_narration_script(text):
             next_time_str = blocks[i+1]['time']
             if next_time_str:
                 next_normalized_time = next_time_str.translate(to_hankaku_time).replace('~', '-')
-                next_time_match = re.match(time_pattern, next_normalized_time)
-                if next_time_match:
-                    next_groups = next_time_match.groups()
+                if re.match(time_pattern, next_normalized_time):
+                    next_groups = re.match(time_pattern, next_normalized_time).groups()
                     next_start_hh, next_start_mm, next_start_ss, next_start_dec, _, _, _, _ = [int(g or 0) for g in next_groups]
                     end_total_seconds = (end_hh * 3600) + (end_mm * 60) + end_ss + (end_dec / 100.0)
                     next_start_total_seconds = (next_start_hh * 3600) + (next_start_mm * 60) + next_start_ss + (next_start_dec / 100.0)
@@ -120,7 +105,7 @@ def convert_narration_script(text):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分（変更なし）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - 【ポップアップ＆フッター追加版】▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
@@ -130,21 +115,32 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.header('')
+    
+    # --- ▼▼▼【変更点1】入力エリアのタイトルと、ポップアップを追加 ▼▼▼ ---
+    # 横並びにするためのコンテナを用意
+    c = st.container()
+    c.write("ナレーション原稿形式に変換します")
+    
+    with c:
+        with st.tooltip("""
+【話者名のルール】
+・行頭に「N」や「n」があれば「Ｎ」になります。
+・行頭に「VO」や「木村」などがあれば、それが話者名になります。
+・話者名がない場合は、自動で「Ｎ」が補われます。
+
+【その他の機能】
+・本文が空の場合（タイムコードの下が空行など）、自動で「※注意！本文なし！」と表示します。
+・先頭のシーケンス名や余分な改行は自動で無視します。
+・１時間を超えるタイムコード（hh:mm:ss）にも対応しています。
+・半角の英数字は、すべて全角に変換されます。
+        """):
+            st.caption("詳しい仕様 (?)") # (?) を付けると、ここにマウスを乗せれば良いと分かりやすい
+
     input_text = st.text_area(
-        "ナレーション原稿形式に変換します ", 
+        "Premiereで書き出したキャプションをペーストして [Ctrl+Enter] ", 
         height=500, 
-        placeholder="""キャプションをテキストで書き出した形式
-00;00;00;00 - 00;00;02;29
-N ああああ
-
-xmlをサイトで変換した形式
-００：００：１５　〜　００：００：１８
-N ああああ
-
-どちらかでペーストして　Ctrl+Enter　を押して下さい
-※混在も可能です
-
-"""
+        placeholder="ここにテキストを貼り付けてください",
+        label_visibility="collapsed" # ラベルを非表示にしてスッキリさせる
     )
 
 with col2:
@@ -155,3 +151,7 @@ with col2:
             st.text_area("コピーしてお使いください", value=converted_text, height=500)
         except Exception as e:
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
+
+# --- ▼▼▼【変更点2】ページ下部にフッター（コピーライト表記）を追加 ▼▼▼ ---
+st.markdown("---") # 区切り線
+st.caption("Created by kimika Inc.")
