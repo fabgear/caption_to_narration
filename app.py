@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- 【Ver.2：N強制挿入オプション対応】▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （変更なし）▼▼▼
 # ===============================================================
 def convert_narration_script(text, force_n_insertion):
     to_zenkaku_num = str.maketrans('0123456789', '０１２３４５６７８９')
@@ -128,19 +128,21 @@ help_text = """
 """
 
 with col1:
-    st.header('') # お客様のVer.1のレイアウトを維持
-
-    # --- ▼▼▼【変更点】ラベルとチェックボックスを横並びに配置 ▼▼▼ ---
+    st.header('')
+    
+    # --- ▼▼▼【変更点】ラベル部分を自作し、チェックボックスを挟み込みます ▼▼▼ ---
     label_col, checkbox_col = st.columns([0.8, 0.2])
     with label_col:
-        st.write("ナレーション原稿形式に変換します") # text_areaのラベルの代わり
+        # st.text_areaのラベルの代わりに、st.writeで自作のラベルを配置
+        st.write("ナレーション原稿形式に変換します")
     with checkbox_col:
-        force_n_insertion = st.checkbox("N強制挿入", value=True, help="ナレーション本文前に自動で「Ｎ」を補います。")
+        # チェックボックスを配置
+        force_n_insertion = st.checkbox("N強制挿入", value=True)
     
-    # お客様のVer.1のtext_areaを、labelを非表示にして再現
+    # お客様のVer.1のtext_areaを、labelを非表示にして使用
     input_text = st.text_area(
-        "ナレーション原稿形式に変換します", # このラベルは表示されない
-        height=200, 
+        "ナレーション原稿形式に変換します", # このラベルは表示されませんが、help機能のために必要
+        height=500, 
         placeholder="""キャプションをテキストで書き出した形式
 00;00;00;00 - 00;00;02;29
 N ああああ
@@ -153,15 +155,14 @@ N ああああ
 ※混在も可能です
 
 """,
-        help=help_text,
-        label_visibility="collapsed" # ラベルを非表示にする
+        help=help_text, # ここでお客様の【機能詳細】が呼び出されます
+        label_visibility="collapsed" # 自作ラベルがあるので、本来のラベルは非表示に
     )
 
 with col2:
-    st.header('') # お客様のVer.1のレイアウトを維持
+    st.header('')
     if input_text:
         try:
-            # --- ▼▼▼【変更点】チェックボックスの状態を関数に渡す ▼▼▼ ---
             converted_text = convert_narration_script(input_text, force_n_insertion)
             st.text_area("コピーしてお使いください", value=converted_text, height=500)
         except Exception as e:
