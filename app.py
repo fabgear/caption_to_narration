@@ -3,11 +3,11 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver3.7：N強制挿入ロジック追加）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver4.0：N強制挿入ロジック追加）▼▼▼
 # ===============================================================
 # N_FORCE_INSERT_FLAG を受け取るように変更
 def convert_narration_script(text, n_force_insert_flag=True):
-    # （中略：設定値とmaketrnas定義はver2を維持）
+    # （ロジックはver3.3と同一。機能は実装済み）
     FRAME_RATE = 30.0
     CONNECTION_THRESHOLD = 1.0 + (10.0 / FRAME_RATE)
 
@@ -106,7 +106,6 @@ def convert_narration_script(text, n_force_insert_flag=True):
         text_content = block['text']
         body = ""
 
-        # ▼▼▼【ver3.7 N強制挿入ロジック】if文をフラグで制御 ▼▼▼
         if n_force_insert_flag:
             match = re.match(r'^(\S+)\s+(.*)', text_content)
             if match:
@@ -120,13 +119,10 @@ def convert_narration_script(text, n_force_insert_flag=True):
                 else: body = text_content
             if not body: body = "※注意！本文なし！"
         else:
-            # N強制挿入がOFFの場合: 話者/本文の処理を一切行わず、そのまま出力
             speaker_symbol = ''; body = text_content 
-        # ▲▲▲【ver3.7 N強制挿入ロジック】ここまで ▼▼▼
 
         body = body.translate(to_zenkaku_all)
         
-        # （中略：終了時間とつながり判定ロジックは変更なし）
         end_string = ""; add_blank_line = True
         
         if i + 1 < len(parsed_blocks):
@@ -157,16 +153,15 @@ def convert_narration_script(text, n_force_insert_flag=True):
             
     return "\n".join(output_lines)
 
-
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - （ver3.7：多段カラムの安定版）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - （ver4.0：ver2の厳密な再現と機能統合）▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
 st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
+col1, col2 = st.columns(2)
 
-# ヘルプテキストを定義（変更なし）
 help_text = """
 【機能詳細】  
 ・ENDタイム(秒のみ)が自動で入ります  
@@ -177,22 +172,15 @@ help_text = """
 ・ナレーション本文の半角英数字は全て全角に変換します  
 """
 
-# ----------------------------------------------------------------------------------
-# 1段目：メインのテキストエリアとタイトル
-# ----------------------------------------------------------------------------------
-col1_top, col2_top = st.columns(2)
-
-# タイトルはテキストエリアと同一カラムの最上部に配置 (ver2構造)
-with col1_top:
-    st.header('ナレーション原稿形式に変換します')
-with col2_top:
-    st.header('コピーしてお使いください')
-
-# テキストエリアの定義は次のブロックで行うため、ここでは st.empty() でプレースホルダーを確保
-# st.text_areaの戻り値はここで定義する必要があるため、構造を単純化します。
-with col1_top:
+# ▼▼▼【ver4.0 厳密な再現】col1 の内部構造は ver2 と同じ ▼▼▼
+with col1:
+    st.header('')
+    
+    # ----------------------------------------------------------------------------------
+    # 1. テキストエリア本体 (ver2と同じ)
+    # ----------------------------------------------------------------------------------
     input_text = st.text_area(
-        "　", 
+        "ナレーション原稿形式に変換します", 
         height=500, 
         placeholder="""①キャプションをテキストで書き出した形式
 00;00;00;00 - 00;00;02;29
@@ -208,47 +196,45 @@ N ああああ
 """,
         help=help_text
     )
-
-with col2_top:
-    output_text_area = st.empty()
-
-
-# ----------------------------------------------------------------------------------
-# 2段目：コントロールエリア（左右バランスを崩さない新しい領域）
-# ----------------------------------------------------------------------------------
-col1_bottom, col2_bottom = st.columns(2)
-
-# ▼▼▼【ver3.7 変更点】N強制挿入チェックボックスを2段目の左に配置 ▼▼▼
-with col1_bottom:
+    
+    # ----------------------------------------------------------------------------------
+    # 2. 機能追加エリア（ver4.0の追加機能）
+    # ----------------------------------------------------------------------------------
+    # テキストエリアの直下にチェックボックスを配置
     n_force_insert = st.checkbox("N強制挿入", value=True)
 
-with col2_bottom:
-    # 右下エリアは空で、左のチェックボックスに合わせた高さ調整の役割
-    # 上部エリアとの間に間隔を開けるために st.markdown を使用
-    st.markdown('<div style="height: 38px;"></div>', unsafe_allow_html=True) # チェックボックスとだいたい同じ高さ
 
+# ▼▼▼【ver4.0 厳密な再現】col2 の内部構造は ver2 と同じにするが、機能を追加 ▼▼▼
+with col2:
+    st.header('')
+    
+    # ----------------------------------------------------------------------------------
+    # 1. 出力エリアの表示ロジック (ver2と同じif input_text:)
+    # ----------------------------------------------------------------------------------
+    if input_text:
+        try:
+            # ▼▼▼【ver4.0 機能連動】変換関数にフラグを渡す ▼▼▼
+            converted_text = convert_narration_script(input_text, n_force_insert)
+            
+            # テキストエリアの高さは左と同じ500pxに強制固定
+            st.text_area("コピーしてお使いください", value=converted_text, height=500)
+            
+            # ----------------------------------------------------------------------------------
+            # 2. 高さを揃えるための隠し要素（ver4.0の工夫）
+            # ----------------------------------------------------------------------------------
+            # 左カラムのチェックボックス（約38px）分の高さを下部に確保し、上のテキストエリアのバランスを維持
+            st.markdown('<div style="height: 38px;"></div>', unsafe_allow_html=True)
+            
+        except Exception as e:
+            st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
+            # エラー時も高さを揃えるための隠し要素を配置
+            st.markdown('<div style="height: 38px;"></div>', unsafe_allow_html=True)
+    else:
+        # 入力がない場合（ver2と同じ）
+        # ただし、左カラムのチェックボックスの高さ分だけ、このエリアに空の隠し要素を配置し、全体の高さを維持
+        st.text_area("コピーしてお使いください", value="", height=500)
+        st.markdown('<div style="height: 38px;"></div>', unsafe_allow_html=True)
 
-# ----------------------------------------------------------------------------------
-# 3. 変換結果の表示（メインロジック）
-# ----------------------------------------------------------------------------------
-if input_text:
-    try:
-        # チェックボックスの状態を反映させて変換を一度行う
-        converted_text = convert_narration_script(input_text, n_force_insert)
-        
-        # プレースホルダーに結果を表示
-        with col2_top:
-             st.text_area("　", value=converted_text, height=500)
-             
-    except Exception as e:
-        # エラー時
-        with col2_top:
-            st.text_area("　", value="エラーが発生しました。テキストの形式を確認してください。", height=500)
-            st.error(f"詳細: {e}")
-else:
-    # 入力がない初期状態の場合、右側を空にしてバランスを保つ
-    with col2_top:
-        st.text_area("　", value="", height=500)
 
 # --- フッターをカスタマイズ ---
 st.markdown("---")
