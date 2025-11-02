@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- 【話者名判定ロジック改善版】▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- 【複数形式対応・最終版】▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 変換テーブルの準備 ---
@@ -11,6 +11,8 @@ def convert_narration_script(text):
     hankaku_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '
     zenkaku_chars = 'ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９　'
     to_zenkaku_all = str.maketrans(hankaku_chars, zenkaku_chars)
+    # 全角数字・記号を半角に変換するためのテーブル
+    to_hankaku_time = str.maketrans('０１２３４５６７８９：〜', '0123456789:~')
 
     lines = [line.strip() for line in text.strip().split('\n') if line.strip()]
     blocks = []
@@ -20,11 +22,18 @@ def convert_narration_script(text):
 
     output_lines = []
     for i, block in enumerate(blocks):
-        time_match = re.match(r'(\d{2})[:;](\d{2})[:;](\d{2})[.;](\d{2})\s*-\s*(\d{2})[:;](\d{2})[:;](\d{2})[.;](\d{2})', block['time'])
+        
+        # --- ▼▼▼ ここで入力された時間表記を正規化（ノーマライズ）します ▼▼▼ ---
+        normalized_time_str = block['time'].translate(to_hankaku_time).replace('~', '-')
+        
+        # --- ▼▼▼ ここが新しい正規表現です（ミリ秒がなくてもOK） ▼▼▼ ---
+        time_match = re.match(r'(\d{2}):(\d{2}):(\d{2})(?:[.;](\d{2}))?\s*-\s*(\d{2}):(\d{2}):(\d{2})(?:[.;](\d{2}))?', normalized_time_str)
         if not time_match: continue
         
-        start_hh, start_mm, start_ss, start_dec, end_hh, end_mm, end_ss, end_dec = [int(g) for g in time_match.groups()]
-        
+        groups = time_match.groups()
+        start_hh, start_mm, start_ss, start_dec, end_hh, end_mm, end_ss, end_dec = [int(g or 0) for g in groups]
+
+        # 1. 開始時間のフォーマット
         start_total_seconds = start_ss + start_dec / 100.0
         rounded_sec = round(start_total_seconds)
         if rounded_sec >= 60:
@@ -32,39 +41,35 @@ def convert_narration_script(text):
             rounded_sec = 0
         formatted_start_time = f"{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
 
+        # 2. 話者記号と本文のフォーマット
         speaker_symbol = 'Ｎ'
         text_content = block['text'].strip()
-        
         match = re.match(r'^(\S+)\s+(.*)', text_content)
 
         if match:
             raw_speaker = match.group(1)
             body = match.group(2).strip()
-            
             if raw_speaker.upper() == 'N':
                 speaker_symbol = 'Ｎ'
             else:
                 speaker_symbol = raw_speaker.translate(to_zenkaku_all)
         else:
-            if text_content.startswith('Ｎ '):
-                body = text_content[2:].strip()
-            elif text_content.startswith('N '):
-                 body = text_content[2:].strip()
-            else:
-                body = text_content
-
-        if not body:
-            body = "※注意！本文なし！"
-        
+            if text_content.startswith('Ｎ '): body = text_content[2:].strip()
+            elif text_content.startswith('N '): body = text_content[2:].strip()
+            else: body = text_content
+        if not body: body = "※注意！本文なし！"
         body = body.translate(to_zenkaku_all)
         
+        # 3. 終了時間と空白行の処理
         end_string = ""
         add_blank_line = True
 
         if i + 1 < len(blocks):
-            next_time_match = re.match(r'(\d{2})[:;](\d{2})[:;](\d{2})[.;](\d{2})', blocks[i+1]['time'])
+            next_normalized_time = blocks[i+1]['time'].translate(to_hankaku_time)
+            next_time_match = re.match(r'(\d{2}):(\d{2}):(\d{2})(?:[.;](\d{2}))?', next_normalized_time)
             if next_time_match:
-                next_start_hh, next_start_mm, next_start_ss, next_start_dec = [int(g) for g in next_time_match.groups()]
+                next_groups = next_time_match.groups()
+                next_start_hh, next_start_mm, next_start_ss, next_start_dec = [int(g or 0) for g in next_groups]
                 end_total_seconds = (end_hh * 3600) + (end_mm * 60) + end_ss + (end_dec / 100.0)
                 next_start_total_seconds = (next_start_hh * 3600) + (next_start_mm * 60) + next_start_ss + (next_start_dec / 100.0)
                 if next_start_total_seconds - end_total_seconds < 1.0:
@@ -77,6 +82,7 @@ def convert_narration_script(text):
                 formatted_end_time = f"{end_mm:02d}{end_ss:02d}".translate(to_zenkaku_num)
             end_string = f"　（～{formatted_end_time}）"
             
+        # 4. 最終的な行を組み立て
         output_lines.append(f"{formatted_start_time}　　{speaker_symbol}　{body}{end_string}")
         if add_blank_line and i < len(blocks) - 1:
             output_lines.append("")
@@ -84,7 +90,7 @@ def convert_narration_script(text):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ ここからがStreamlitの画面を作る部分です ▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分（変更なし）▼▼▼
 # ===============================================================
 st.set_page_config(
     page_title="Caption to Narration",
@@ -93,33 +99,38 @@ st.set_page_config(
 )
 st.title('Caption to Narration')
 
-# --- ▼▼▼ ここにCSSを書き込むための「おまじない」を追加 ▼▼▼ ---
 st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
 
 col1, col2 = st.columns(2)
 
 with col1:
-    st.header('') # ヘッダーを空にする
+    st.header('')
     input_text = st.text_area(
-        "Premiereからキャプションをテキストで書き出し。中身をペーストし Ctrl+Enter", 
+        "Premiereで書き出したキャプションをペーストして [Ctrl+Enter] ", 
         height=500, 
-        placeholder="""00;00;00;00 - 00;00;02;29
+        placeholder="""例：
+00;00;00;00 - 00;00;02;29
 N ああああ
 
-👇変換されます
+または、
+００：００：１５　〜　００：００：１８
+VO ああああ
 
+上のどちらの形式でも、下のように変換されます。
+------------------------------------------------
 ００００　　Ｎ　ああああ　（～０２）
 
-
-【変換ルール】
-・「Ｎ」は半角Ｎや小文字n、無記載の場合でも全角Ｎに自動変換
-・本文の半角英数字は全て全角に変換
-・ＥＮＤタイムが自動で入りますがナレーション繋がるところは割愛
+００１５　　ＶＯ　ああああ
+------------------------------------------------
+【話者名のルール】
+・行頭に「N」や「n」があれば「Ｎ」になります。
+・行頭に「VO」や「木村」などがあれば、それが話者名になります。
+・話者名がない場合は、自動で「Ｎ」が補われます。
 """
     )
 
 with col2:
-    st.header('') # ヘッダーを空にする
+    st.header('')
     if input_text:
         try:
             converted_text = convert_narration_script(input_text)
