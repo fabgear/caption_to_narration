@@ -3,11 +3,11 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver3.2：N強制挿入ロジック追加）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver3.3：N強制挿入ロジック追加）▼▼▼
 # ===============================================================
-# ▼▼▼【ver3.2 変更点】N_FORCE_INSERT_FLAG を受け取るように変更 ▼▼▼
+# N_FORCE_INSERT_FLAG を受け取るように変更
 def convert_narration_script(text, n_force_insert_flag=True):
-    # （中略：設定値とmaketrnas定義はver2を維持）
+    # （中略：ロジックは ver3.2 のまま。致命的なmaketrnasエラーがないことを確認済み）
     FRAME_RATE = 30.0
     CONNECTION_THRESHOLD = 1.0 + (10.0 / FRAME_RATE)
 
@@ -21,7 +21,6 @@ def convert_narration_script(text, n_force_insert_flag=True):
     start_index = -1
     time_pattern = r'(\d{2})[:;](\d{2})[:;](\d{2})[;.](\d{2})\s*-\s*(\d{2})[:;](\d{2})[:;](\d{2})[;.](\d{2})'
     
-    # （中略：ブロック解析ロジックは変更なし）
     for i, line in enumerate(lines):
         line_with_frames = re.sub(r'(\d{2}:\d{2}:\d{2})(?![:.]\d{2})', r'\1.00', line)
         normalized_line = line_with_frames.strip().translate(to_hankaku_time).replace('~', '-')
@@ -111,7 +110,7 @@ def convert_narration_script(text, n_force_insert_flag=True):
         text_content = block['text']
         body = ""
 
-        # ▼▼▼【ver3.2 N強制挿入ロジック】ここを修正 ▼▼▼
+        # N強制挿入ロジック
         if n_force_insert_flag:
             match = re.match(r'^(\S+)\s+(.*)', text_content)
             if match:
@@ -127,8 +126,7 @@ def convert_narration_script(text, n_force_insert_flag=True):
         else:
             # N強制挿入がOFFの場合: 話者/本文の処理を一切行わず、そのまま出力
             # ただし全角変換は行う
-            body = text_content 
-        # ▲▲▲【ver3.2 修正点】ここまで ▲▲▲
+            speaker_symbol = ''; body = text_content 
 
         body = body.translate(to_zenkaku_all)
         
@@ -164,11 +162,12 @@ def convert_narration_script(text, n_force_insert_flag=True):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - （ver3.2：下部コントロールエリア追加）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - （ver3.3：最終UIと機能連動）▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
+# UIシンプル化のため、カスタムCSSも初期状態に戻す
 st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
 
 # ヘルプテキストを定義（変更なし）
@@ -189,7 +188,6 @@ col1_top, col2_top = st.columns(2)
 
 with col1_top:
     st.header('ナレーション原稿形式に変換します')
-    # input_textは col1_top の中で定義
     input_text = st.text_area(
         "　", 
         height=500, 
@@ -209,45 +207,43 @@ N ああああ
     )
 
 with col2_top:
+    # 右カラムのヘッダーは常に表示し、左カラムと高さを揃える
     st.header('コピーしてお使いください')
-    converted_text = ""
-    # エラーが発生した場合も、ヘッダーとテキストエリアは常に表示
-    try:
-        if input_text:
-            # 変換ロジックを呼ぶための仮のフラグ（下部のチェックボックスで上書き）
-            temp_converted_text = convert_narration_script(input_text, True) 
-            st.text_area("　", value=temp_converted_text, height=500)
-            converted_text = temp_converted_text # 後で再利用するために保存
-        else:
-            st.text_area("　", value="", height=500)
-    except Exception as e:
-        st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
-        st.text_area("　", value="", height=500)
+    # テキストエリアは常に表示し、中身を制御
+    output_text_area = st.empty() # 出力エリアのプレースホルダーを確保
 
 # ----------------------------------------------------------------------------------
-# 2. 下部：コントロールエリア（バランスを崩さないための新規エリア）
+# 2. 下部：コントロールエリア
 # ----------------------------------------------------------------------------------
 col1_bottom, col2_bottom = st.columns(2)
 
 with col1_bottom:
-    # ▼▼▼【ver3.2 変更点】N強制挿入チェックボックス ▼▼▼
+    # ▼▼▼【ver3.3 変更点】N強制挿入チェックボックス ▼▼▼
     n_force_insert = st.checkbox("N強制挿入", value=True)
 
 with col2_bottom:
-    # 右下のエリアは空で、将来の機能のために場所だけ確保
-    # 例：st.button("ファイルダウンロード") などをここに追加できる
+    # 右下エリアは空で、左下のチェックボックスに合わせた高さ調整の役割
+    st.markdown('<div style="height: 38px;"></div>', unsafe_allow_html=True)
+
 
 # ----------------------------------------------------------------------------------
-# 3. 変換結果の再表示（チェックボックスの状態を反映させるため）
+# 3. 変換結果の表示（メインロジック）
 # ----------------------------------------------------------------------------------
+if input_text:
+    try:
+        # チェックボックスの状態を反映させて変換を一度行う
+        converted_text = convert_narration_script(input_text, n_force_insert)
+        
+        # プレースホルダーに結果を表示
+        with output_text_area.container():
+             st.text_area("　", value=converted_text, height=500)
+             
+    except Exception as e:
+        # エラー時
+        with output_text_area.container():
+            st.text_area("　", value="エラーが発生しました。テキストの形式を確認してください。", height=500)
+            st.error(f"詳細: {e}")
 
-# チェックボックスの状態が変わったとき（またはCtrl+Enterが押されたとき）に再描画される
-if input_text and st.session_state.get('n_force_insert') != n_force_insert:
-    final_converted_text = convert_narration_script(input_text, n_force_insert)
-    # 再描画のためのダミーのキー
-    st.session_state['n_force_insert'] = n_force_insert
-    st.experimental_rerun()
-    
 # --- フッターをカスタマイズ ---
 st.markdown("---")
 st.markdown(
