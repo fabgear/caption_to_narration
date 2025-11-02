@@ -228,7 +228,7 @@ with col2:
 st.markdown("---")
 st.markdown(
     """
-    <div style="text-align: right; font-size: 9px; color: #C5D6B9;">
+    <div style="text-align: right; font-size: 12px; color: #C5D6B9;">
         © 2025 kimika Inc. All rights reserved.
     </div>
     """,
