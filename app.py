@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver1.6：Hまたぎ対応）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver1.7：Hまたぎ開始時間修正）▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 設定値 ---
@@ -60,34 +60,40 @@ def convert_narration_script(text):
         groups = time_match.groups()
         start_hh, start_mm, start_ss, start_fr, end_hh, end_mm, end_ss, end_fr = [int(g or 0) for g in groups]
 
-        # H繰り上がりマーカー
         if previous_hh == -1: previous_hh = start_hh
         if start_hh > previous_hh:
             output_lines.append("")
             output_lines.append(f"＜{str(start_hh).translate(to_zenkaku_num)}Ｈ＞")
             output_lines.append("")
         previous_hh = start_hh
-        
-        # ▼▼▼【ver1.6 変更点】開始時間の分をH繰り上がりを考慮して調整 ▼▼▼
-        # 分の表示を、時を無視して00〜59にループするように調整
-        display_mm = start_mm % 60 
 
-        # 開始時間のフォーマット（ver1.3のロジックを維持しつつ、display_mmを使う）
+        # ▼▼▼【ver1.7 変更点】開始時間の分秒をHをまたいでも00から表示するように修正 ▼▼▼
+        # 0〜59分までのトータル秒数（Hは無視）
+        total_seconds_in_minute_loop = (start_mm % 60) * 60 + start_ss
+        
         spacer = ""
         if 0 <= start_fr <= 9:
-            formatted_start_time = f"{display_mm:02d}{start_ss:02d}".translate(to_zenkaku_num)
+            # 0-9F: MMSS表記、スペース3つ
+            display_mm = (total_seconds_in_minute_loop // 60) % 60
+            display_ss = total_seconds_in_minute_loop % 60
+            formatted_start_time = f"{display_mm:02d}{display_ss:02d}".translate(to_zenkaku_num)
             spacer = "　　　"
         elif 10 <= start_fr <= 22:
-            time_num_part = f"{display_mm:02d}{start_ss:02d}".translate(to_zenkaku_num)
+            # 10-22F: MMSS半 表記、スペース2つ
+            display_mm = (total_seconds_in_minute_loop // 60) % 60
+            display_ss = total_seconds_in_minute_loop % 60
+            time_num_part = f"{display_mm:02d}{display_ss:02d}".translate(to_zenkaku_num)
             formatted_start_time = f"{time_num_part}半"
             spacer = "　　"
         else: # 23F以降
-            display_ss = start_ss + 1
-            if display_ss >= 60:
-                display_ss = 0
-                display_mm += 1 # 分が繰り上がっても、ここでも % 60で表示は00〜59になる
+            # 23F-: 秒を繰り上げたMMSS表記、スペース3つ
+            total_seconds_in_minute_loop += 1 # 1秒繰り上げ
+            display_mm = (total_seconds_in_minute_loop // 60) % 60
+            display_ss = total_seconds_in_minute_loop % 60
+            
             formatted_start_time = f"{display_mm:02d}{display_ss:02d}".translate(to_zenkaku_num)
             spacer = "　　　"
+        # ▲▲▲【ver1.7 変更点】ここまで ▲▲▲
 
         speaker_symbol = 'Ｎ'
         text_content = block['text']
@@ -131,15 +137,14 @@ def convert_narration_script(text):
                     adj_ss = 59
                     adj_mm -= 1
             
-            # ▼▼▼【ver1.6 変更点】終了時間と開始時間の比較判定ロジックを修正 ▼▼▼
-            # 時が異なるとき、または調整後の分が元の分と異なるときに、分秒表記とする
-            if start_hh != end_hh or start_mm != adj_mm:
-                # 時をまたぐか、分が異なるときはmmss表記
-                # adj_mmを00-59に調整（Hをまたいでも00に戻す）
-                adj_mm_display = adj_mm % 60
+            # 終了時間の分をHをまたいでも00から表示するように調整
+            adj_mm_display = adj_mm % 60
+            
+            # ▼▼▼【ver1.7 変更点】終了時間と開始時間の比較判定ロジックを修正 ▼▼▼
+            # 終了時と開始時が異なる、または調整後の分と開始時の分が異なるときに、分秒表記とする
+            if start_hh != end_hh or (start_mm % 60) != adj_mm_display:
                 formatted_end_time = f"{adj_mm_display:02d}{adj_ss:02d}".translate(to_zenkaku_num)
             else:
-                # 時も分も同じときはss表記
                 formatted_end_time = f"{adj_ss:02d}".translate(to_zenkaku_num)
                 
             end_string = f" (~{formatted_end_time})"
@@ -152,9 +157,7 @@ def convert_narration_script(text):
     return "\n".join(output_lines)
 
 # （StreamlitのUI部分は変更なし）
-# ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - （変更なし）▼▼▼
-# ===============================================================
+# ... 省略 ...
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
