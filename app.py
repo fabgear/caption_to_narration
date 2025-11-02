@@ -3,20 +3,17 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- 【タイポバグ修正・最終完成版】▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- 【空行バグ修正・最終完成版】▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 変換テーブルの準備 ---
     to_zenkaku_num = str.maketrans('0123456789', '０１２３４５６７８９')
-    
-    # --- ▼▼▼【バグ修正】ここで致命的なタイポ（文字の重複）を修正しました ▼▼▼ ---
     hankaku_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '
     zenkaku_chars = 'ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９　'
     to_zenkaku_all = str.maketrans(hankaku_chars, zenkaku_chars)
-    
     to_hankaku_time = str.maketrans('０１２３４５６７８９：〜', '0123456789:~')
 
-    # 空行を消さずに、そのまま行のリストを作成
+    # --- ▼▼▼【バグ修正】空行を消さずに、そのまま行のリストを作成する ▼▼▼ ---
     lines = text.strip().split('\n')
     
     start_index = -1
@@ -33,11 +30,29 @@ def convert_narration_script(text):
         
     relevant_lines = lines[start_index:]
 
+    # --- ▼▼▼【バグ修正】より堅牢なペア作成ロジックに変更 ▼▼▼ ---
     blocks = []
-    for i in range(0, len(relevant_lines), 2):
-        time_val = relevant_lines[i].strip()
-        text_val = relevant_lines[i+1].strip() if i + 1 < len(relevant_lines) else ""
-        blocks.append({'time': time_val, 'text': text_val})
+    i = 0
+    while i < len(relevant_lines):
+        current_line = relevant_lines[i].strip()
+        normalized_line = current_line.translate(to_hankaku_time).replace('~', '-')
+        
+        if re.match(time_pattern, normalized_line):
+            # 現在行がタイムコードの場合
+            time_val = current_line
+            text_val = "" # デフォルトの本文は空
+            
+            # 次の行が存在し、かつそれがタイムコードではない場合、それを本文とする
+            if i + 1 < len(relevant_lines):
+                next_line = relevant_lines[i+1].strip()
+                next_normalized = next_line.translate(to_hankaku_time).replace('~', '-')
+                if not re.match(time_pattern, next_normalized):
+                    text_val = next_line
+                    i += 1 # 本文行も消費したので、インデックスを一つ進める
+            
+            blocks.append({'time': time_val, 'text': text_val})
+        i += 1
+
 
     output_lines = []
     for i, block in enumerate(blocks):
