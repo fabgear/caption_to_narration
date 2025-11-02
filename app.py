@@ -243,7 +243,7 @@ N ああああ
     #    mm_ss_colon = st.checkbox("ｍｍ：ｓｓで出力", value=False)
         # ▲▲▲【ver4.4 修正点】ここまで ▼▼▼
 
-col1_bottom_opt, col2_bottom_opt, col3_bottom_opt = st.columns([2, 2, 1]) 
+col1_bottom_opt, col2_bottom_opt, col3_bottom_opt = st.columns([2, 2, 8]) 
 
 # ▼▼▼【ver5.4 修正点】チェックボックスの横並びを3カラムで実現（構造をver5.2の形に戻す） ▼▼▼
 with col1_bottom_opt:
