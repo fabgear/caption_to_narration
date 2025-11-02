@@ -5,9 +5,7 @@ import math
 # ===============================================================
 # ▼▼▼ ツールの本体（エンジン部分）- 【Ver.2：N強制挿入オプション対応】▼▼▼
 # ===============================================================
-# --- ▼▼▼【変更点1】関数の引数に、チェックボックスの状態を受け取る変数を追加 ▼▼▼ ---
 def convert_narration_script(text, force_n_insertion):
-    # --- 変換テーブルの準備 ---
     to_zenkaku_num = str.maketrans('0123456789', '０１２３４５６７８９')
     hankaku_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '
     zenkaku_chars = 'ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９　'
@@ -62,23 +60,20 @@ def convert_narration_script(text, force_n_insertion):
         if start_hh > 0: formatted_start_time = f"{start_hh:02d}{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
         else: formatted_start_time = f"{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
 
-        # --- ▼▼▼【変更点2】ここから話者名判定ロジックを修正 ▼▼▼ ---
-        speaker_symbol = None  # いったん「なし」で初期化
+        # --- 話者名判定ロジック（Ver.2仕様）---
+        speaker_symbol = None
         text_content = block['text']
         body = ""
 
         match = re.match(r'^(\S+)\s+(.*)', text_content)
         if match:
-            # "VO あああ" のように、話者名らしきものがある場合
             raw_speaker = match.group(1); body = match.group(2).strip()
             if raw_speaker.upper() == 'N': speaker_symbol = 'Ｎ'
             else: speaker_symbol = raw_speaker.translate(to_zenkaku_all)
         else:
-            # 話者名らしきものがなく、本文だけの場合
             body = text_content.strip()
             if body.upper() == 'N' or body == 'Ｎ': body = ""
-
-        # チェックボックスがオンで、かつ話者名が見つからなかった場合のみ、Nを補う
+        
         if force_n_insertion and speaker_symbol is None:
             speaker_symbol = 'Ｎ'
 
@@ -103,13 +98,10 @@ def convert_narration_script(text, force_n_insertion):
             elif start_mm != end_mm: formatted_end_time = f"{end_mm:02d}{end_ss:02d}".translate(to_zenkaku_num)
             else: formatted_end_time = f"{end_ss:02d}".translate(to_zenkaku_num)
             end_string = f"　（～{formatted_end_time}）"
-        
-        # --- ▼▼▼【変更点3】最終的な出力行の組み立て方を修正 ▼▼▼ ---
+            
         if speaker_symbol:
-            # 話者名がある場合 (チェックあり、または元々VOなどがあった)
             output_lines.append(f"{formatted_start_time}　　{speaker_symbol}　{body}{end_string}")
         else:
-            # 話者名がない場合 (チェックなし)
             output_lines.append(f"{formatted_start_time}　　{body}{end_string}")
 
         if add_blank_line and i < len(blocks) - 1:
@@ -118,64 +110,36 @@ def convert_narration_script(text, force_n_insertion):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - 【Ver.2：チェックボックス追加】▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - 【お客様のUI + チェックボックス】▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
-st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
-
-# --- ▼▼▼【変更点4】タイトルとチェックボックスを横並びに配置 ▼▼▼ ---
-title_col, checkbox_col = st.columns([0.8, 0.2]) # 横幅の比率を調整
-with title_col:
-    st.subheader("1. 元のテキストを貼り付け")
-    st.caption("Premiere Proから書き出したキャプションテキストを、そのまま貼り付けてください。")
-with checkbox_col:
-    # `value=True`で、デフォルトでチェックが入った状態にする
-    force_n_insertion = st.checkbox("N強制挿入", value=True, help="話者名がない行に、自動で「Ｎ」を補います。")
-
-
+# --- お客様のUIレイアウトを完全に再現 ---
 col1, col2 = st.columns(2)
 
-help_text = """
-**Premiere Proから書き出された、様々な形式のキャプションテキストに対応しています。**
-
----
-**【対応しているタイムコード形式】**
-・`00;00;00;00 - 00;00;02;29` (セミコロン区切り)
-・`００：００：００ 〜 ００：００：３０` (全角、チルダ区切り)
-・ミリ秒の有無、区切り文字の種類を自動で判別します。
-
----
-**【話者名のルール】**
-・**N** または **n** → **Ｎ**
-・**VO**、**木村** など → **ＶＯ**、**木村** (そのまま話者名として認識)
-・話者名なし → **Ｎ** (「N強制挿入」がオンの場合)
-
----
-**【その他の機能】**
-・本文が空の場合は「※注意！本文なし！」と表示します。
-・先頭のシーケンス名や余分な改行は自動で無視します。
-・１時間を超えるタイムコードにも完全対応しています。
-・本文中の半角英数字は、すべて全角に変換されます。
-"""
-
 with col1:
+    # --- タイトルとチェックボックスを横並びに配置 ---
+    title_col, checkbox_col = st.columns([0.8, 0.2])
+    with title_col:
+        st.subheader("1. 元のテキストを貼り付け")
+        st.caption("Premiere Proから書き出したキャプションテキストを、そのまま貼り付けてください。")
+    with checkbox_col:
+        force_n_insertion = st.checkbox("N強制挿入", value=True, help="話者名がない行に、自動で「Ｎ」を補います。")
+    
     input_text = st.text_area(
         "ここにテキストを貼り付けてください",
-        height=500, 
+        height=500,
         placeholder="ここにテキストを貼り付けてください",
-        help=help_text,
         label_visibility="collapsed"
     )
 
 with col2:
     st.subheader("2. 変換結果をコピー")
     st.caption("変換されたテキストをコピーして、ナレーション原稿としてお使いください。")
-
+    
     if input_text:
         try:
-            # --- ▼▼▼【変更点5】チェックボックスの状態を関数に渡す ▼▼▼ ---
             converted_text = convert_narration_script(input_text, force_n_insertion)
             st.text_area(
                 "ここに変換結果が表示されます",
@@ -186,6 +150,6 @@ with col2:
         except Exception as e:
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
 
-# --- フッター（コピーライト表記）は変更なし ---
+# --- お客様のフッターを再現 ---
 st.markdown("---")
 st.caption("Created by kimika Inc.")
