@@ -232,17 +232,9 @@ N ああああ
 """,
         help=help_text
     )
-    
-    # ▼▼▼【ver4.4 修正点】チェックボックスを左右に並べる ▼▼▼
-   # col_checkbox_left, col_checkbox_right = st.columns(2)
-    
-   # with col_checkbox_left:
-   #     n_force_insert = st.checkbox("N強制挿入", value=True)
-    
-   # with col_checkbox_right:
-    #    mm_ss_colon = st.checkbox("ｍｍ：ｓｓで出力", value=False)
-        # ▲▲▲【ver4.4 修正点】ここまで ▼▼▼
-
+# ----------------------------------------------------------------------------------
+# 2段目：コントロールエリア（3カラム構造）
+# ----------------------------------------------------------------------------------
 col1_bottom_opt, col2_bottom_opt, col3_bottom_opt = st.columns([2, 2, 8]) 
 
 # ▼▼▼【ver5.4 修正点】チェックボックスの横並びを3カラムで実現（構造をver5.2の形に戻す） ▼▼▼
