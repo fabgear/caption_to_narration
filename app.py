@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- 【本文なし判定ロジック修正版】▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- 【空行バグ修正・最終完成版】▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 変換テーブルの準備 ---
@@ -13,13 +13,14 @@ def convert_narration_script(text):
     to_zenkaku_all = str.maketrans(hankaku_chars, zenkaku_chars)
     to_hankaku_time = str.maketrans('０１２３４５６７８９：〜', '0123456789:~')
 
-    lines = [line.strip() for line in text.strip().split('\n') if line.strip()]
+    # --- ▼▼▼【バグ修正】空行を消さずに、そのまま行のリストを作成する ▼▼▼ ---
+    lines = text.strip().split('\n')
     
     start_index = -1
     time_pattern = r'(\d{2}):(\d{2}):(\d{2})(?:[.;](\d{2}))?\s*-\s*(\d{2}):(\d{2}):(\d{2})(?:[.;](\d{2}))?'
     
     for i, line in enumerate(lines):
-        normalized_line = line.translate(to_hankaku_time).replace('~', '-')
+        normalized_line = line.strip().translate(to_hankaku_time).replace('~', '-')
         if re.match(time_pattern, normalized_line):
             start_index = i
             break
@@ -32,7 +33,7 @@ def convert_narration_script(text):
     blocks = []
     for i in range(0, len(relevant_lines), 2):
         if i + 1 < len(relevant_lines):
-            blocks.append({'time': relevant_lines[i], 'text': relevant_lines[i+1]})
+            blocks.append({'time': relevant_lines[i].strip(), 'text': relevant_lines[i+1].strip()})
 
     output_lines = []
     for i, block in enumerate(blocks):
@@ -43,56 +44,37 @@ def convert_narration_script(text):
         groups = time_match.groups()
         start_hh, start_mm, start_ss, start_dec, end_hh, end_mm, end_ss, end_dec = [int(g or 0) for g in groups]
 
-        # 1. 開始時間のフォーマット（hhを考慮）
         start_total_seconds = start_ss + start_dec / 100.0
         rounded_sec = round(start_total_seconds)
         if rounded_sec >= 60:
-            start_mm += 1
-            rounded_sec = 0
+            start_mm += 1; rounded_sec = 0
             if start_mm >= 60:
-                start_hh += 1
-                start_mm = 0
+                start_hh += 1; start_mm = 0
         
         if start_hh > 0:
             formatted_start_time = f"{start_hh:02d}{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
         else:
             formatted_start_time = f"{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
 
-        # 2. 話者記号と本文のフォーマット
         speaker_symbol = 'Ｎ'
-        text_content = block['text'].strip()
+        text_content = block['text']
         body = ""
 
-        # --- ▼▼▼【ロジック修正】"無記載"の特別扱いを削除 ▼▼▼ ---
         match = re.match(r'^(\S+)\s+(.*)', text_content)
         if match:
-            raw_speaker = match.group(1)
-            body = match.group(2).strip()
-            if raw_speaker.upper() == 'N':
-                speaker_symbol = 'Ｎ'
-            else:
-                speaker_symbol = raw_speaker.translate(to_zenkaku_all)
+            raw_speaker = match.group(1); body = match.group(2).strip()
+            if raw_speaker.upper() == 'N': speaker_symbol = 'Ｎ'
+            else: speaker_symbol = raw_speaker.translate(to_zenkaku_all)
         else:
-            # 話者名がない、または全角Nで始まる場合
-            # (例: "N", "Ｎ", "本文だけ")
-            if text_content.upper() == 'N' or text_content == 'Ｎ':
-                body = "" # NやＮだけの行は本文なし
-            elif text_content.startswith('Ｎ '): 
-                body = text_content[2:].strip()
-            elif text_content.startswith('N '): 
-                body = text_content[2:].strip()
-            else: 
-                body = text_content
+            if text_content.upper() == 'N' or text_content == 'Ｎ': body = ""
+            elif text_content.startswith('Ｎ '): body = text_content[2:].strip()
+            elif text_content.startswith('N '): body = text_content[2:].strip()
+            else: body = text_content
 
-        if not body:
-            body = "※注意！本文なし！"
-        
+        if not body: body = "※注意！本文なし！"
         body = body.translate(to_zenkaku_all)
         
-        # 3. 終了時間と空白行の処理
-        end_string = ""
-        add_blank_line = True
-
+        end_string = ""; add_blank_line = True
         if i + 1 < len(blocks):
             next_normalized_time = blocks[i+1]['time'].translate(to_hankaku_time).replace('~', '-')
             next_time_match = re.match(time_pattern, next_normalized_time)
@@ -105,15 +87,11 @@ def convert_narration_script(text):
                     add_blank_line = False
 
         if add_blank_line:
-            if start_hh != end_hh:
-                formatted_end_time = f"{end_hh:02d}{end_mm:02d}{end_ss:02d}".translate(to_zenkaku_num)
-            elif start_mm != end_mm:
-                formatted_end_time = f"{end_mm:02d}{end_ss:02d}".translate(to_zenkaku_num)
-            else:
-                formatted_end_time = f"{end_ss:02d}".translate(to_zenkaku_num)
+            if start_hh != end_hh: formatted_end_time = f"{end_hh:02d}{end_mm:02d}{end_ss:02d}".translate(to_zenkaku_num)
+            elif start_mm != end_mm: formatted_end_time = f"{end_mm:02d}{end_ss:02d}".translate(to_zenkaku_num)
+            else: formatted_end_time = f"{end_ss:02d}".translate(to_zenkaku_num)
             end_string = f"　（～{formatted_end_time}）"
             
-        # 4. 最終的な行を組み立て
         output_lines.append(f"{formatted_start_time}　　{speaker_symbol}　{body}{end_string}")
         if add_blank_line and i < len(blocks) - 1:
             output_lines.append("")
@@ -121,17 +99,12 @@ def convert_narration_script(text):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分（説明文を修正）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分（説明文を最終化）▼▼▼
 # ===============================================================
-st.set_page_config(
-    page_title="Caption to Narration",
-    page_icon="📝",
-    layout="wide"
-)
+st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
 st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
-
 col1, col2 = st.columns(2)
 
 with col1:
@@ -145,9 +118,8 @@ with col1:
 00;00;00;00 - 00;00;02;29
 N ああああ
 
-または、
+または、タイムコードの下に何もない（空行）場合
 ００：００：１５　〜　００：００：１８
-N
 
 上のテキストが、下のように変換されます。
 ------------------------------------------------
@@ -161,7 +133,7 @@ N
 ・話者名がない場合は、自動で「Ｎ」が補われます。
 
 【その他の機能】
-・本文が空の場合（例：行に"N"だけ）、自動で「※注意！本文なし！」と表示します。
+・本文が空の場合（タイムコードの下が空行など）、自動で「※注意！本文なし！」と表示します。
 ・先頭のシーケンス名や余分な改行は自動で無視します。
 ・１時間を超えるタイムコード（hh:mm:ss）にも対応しています。
 """
