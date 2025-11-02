@@ -3,17 +3,20 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- 【空行バグ修正・最終完成版】▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- 【タイポバグ修正・最終完成版】▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 変換テーブルの準備 ---
     to_zenkaku_num = str.maketrans('0123456789', '０１２３４５６７８９')
-    hankaku_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234GHIJKLMNOPQRSTUVWXYZ0123456789 '
+    
+    # --- ▼▼▼【バグ修正】ここで致命的なタイポ（文字の重複）を修正しました ▼▼▼ ---
+    hankaku_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '
     zenkaku_chars = 'ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９　'
     to_zenkaku_all = str.maketrans(hankaku_chars, zenkaku_chars)
+    
     to_hankaku_time = str.maketrans('０１２３４５６７８９：〜', '0123456789:~')
 
-    # --- ▼▼▼【バグ修正】空行を消さずに、そのまま行のリストを作成する ▼▼▼ ---
+    # 空行を消さずに、そのまま行のリストを作成
     lines = text.strip().split('\n')
     
     start_index = -1
@@ -32,7 +35,6 @@ def convert_narration_script(text):
 
     blocks = []
     for i in range(0, len(relevant_lines), 2):
-        # ペアが足りない場合も考慮
         time_val = relevant_lines[i].strip()
         text_val = relevant_lines[i+1].strip() if i + 1 < len(relevant_lines) else ""
         blocks.append({'time': time_val, 'text': text_val})
