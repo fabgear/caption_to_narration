@@ -153,6 +153,11 @@ with col2:
         except Exception as e:
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
 
-# --- フッター（コピーライト表記）は変更なし ---
-st.markdown("---")
-st.caption("Created by kimika Inc.")
+# --- ▼▼▼【変更点】フッターを左揃えにする ▼▼▼ ---
+st.markdown("---") # 区切り線
+
+# HTMLのdivタグとstyleを使って、確実に左揃えにします
+st.markdown(
+    '<div style="text-align: left;">© 2025 kimika Inc. All rights reserved.</div>',
+    unsafe_allow_html=True
+)
