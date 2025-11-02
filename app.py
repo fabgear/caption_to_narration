@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver2.1：最終Hマーカー修正）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver2.2：最終Hマーカー修正）▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 設定値 ---
@@ -65,23 +65,26 @@ def convert_narration_script(text):
             'text': block['text']
         })
 
-    previous_end_hh = -1 # 初期値を-1に戻す
+    previous_end_hh = -1
 
     for i, block in enumerate(parsed_blocks):
         start_hh, start_mm, start_ss, start_fr = block['start_hh'], block['start_mm'], block['start_ss'], block['start_fr']
         end_hh, end_mm, end_ss, end_fr = block['end_hh'], block['end_mm'], block['end_ss'], block['end_fr']
 
-        # ▼▼▼【ver2.1 変更点】Hマーカーは、現在のブロックの開始時が直前のブロックの終了時と異なるときに入れる ▼▼▼
         should_insert_h_marker = False
         
         if i == 0:
             if start_hh > 0:
                  should_insert_h_marker = True
-            previous_end_hh = end_hh # 最初のブロックの終了時を記録
+            previous_end_hh = end_hh 
         
         else:
-            # 現在のブロックの開始時が、直前のブロックの終了時より大きい場合
-            if start_hh > previous_end_hh:
+            # (1) Hをまたぐナレーションの場合 (00Hスタートだが01Hで終わる)
+            if start_hh < end_hh:
+                 should_insert_h_marker = True
+            
+            # (2) 次のナレーションが新しいHで始まる場合 (前のナレーションが01Hで終わり、次のナレーションが02Hで始まる)
+            elif start_hh > previous_end_hh: 
                  should_insert_h_marker = True
 
         if should_insert_h_marker:
@@ -89,10 +92,9 @@ def convert_narration_script(text):
              output_lines.append(f"＜{str(start_hh).translate(to_zenkaku_num)}Ｈ＞")
              output_lines.append("")
              
-        previous_end_hh = end_hh # 現在のブロックの終了時を記録
-        # ▲▲▲【ver2.1 変更点】ここまで ▼▼▼
+        previous_end_hh = end_hh 
 
-        # ... (開始時間、本文、終了時間ロジックはver1.9/2.0のロジックを維持) ...
+        # 以下、開始時間、本文、終了時間ロジックはver1.7/1.8/1.9のロジックを維持
         total_seconds_in_minute_loop = (start_mm % 60) * 60 + start_ss
         
         spacer = ""
