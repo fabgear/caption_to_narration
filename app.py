@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver1.9：Hまたぎナレーション直前マーカー修正）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver2.0：H開始時比較マーカー修正）▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 設定値 ---
@@ -50,7 +50,6 @@ def convert_narration_script(text):
 
     output_lines = []
     
-    # ▼▼▼【ver1.9 変更点】開始時/終了時の情報だけを抽出し、処理をより正確にする ▼▼▼
     parsed_blocks = []
     for block in blocks:
         line_with_frames = re.sub(r'(\d{2}:\d{2}:\d{2})(?![:.]\d{2})', r'\1.00', block['time'])
@@ -70,7 +69,7 @@ def convert_narration_script(text):
         start_hh, start_mm, start_ss, start_fr = block['start_hh'], block['start_mm'], block['start_ss'], block['start_fr']
         end_hh, end_mm, end_ss, end_fr = block['end_hh'], block['end_mm'], block['end_ss'], block['end_fr']
 
-        # ▼▼▼【ver1.9 変更点】Hまたぎ判定ロジックを完全に修正 ▼▼▼
+        # ▼▼▼【ver2.0 変更点】Hマーカーは、現在のブロックの開始時が前のブロックの開始時と異なるときに入れる ▼▼▼
         should_insert_h_marker = False
         
         if i == 0:
@@ -80,22 +79,17 @@ def convert_narration_script(text):
                  
         else:
             prev_block = parsed_blocks[i-1]
-            
-            # (1) ナレーションがHをまたいでいる場合 (00:59:59 -> 01:00:02)
-            if start_hh > prev_block['end_hh']:
+            # Hが変わった（00Hから01Hに、など）最初のナレーションの前にマーカー
+            if block['start_hh'] != prev_block['start_hh']:
                  should_insert_h_marker = True
-            
-            # (2) 次のナレーションが新しいHで始まる場合 (00:59:58で終わり -> 01:00:00から始まる)
-            elif start_hh > prev_block['start_hh'] and start_hh > prev_block['end_hh']: 
-                 should_insert_h_marker = True # (これはstart_hh > prev_end_hhで既にカバーされているが念のため)
 
         if should_insert_h_marker:
              output_lines.append("")
              output_lines.append(f"＜{str(start_hh).translate(to_zenkaku_num)}Ｈ＞")
              output_lines.append("")
-        # ▲▲▲【ver1.9 変更点】ここまで ▲▲▲
+        # ▲▲▲【ver2.0 変更点】ここまで ▲▲▲
 
-        # 以下、ver1.7の開始時間ロジックを維持 (start_mm, start_ss, start_frを使用)
+        # 以下、開始時間、本文、終了時間ロジックはver1.7/1.8/1.9のロジックを維持
         total_seconds_in_minute_loop = (start_mm % 60) * 60 + start_ss
         
         spacer = ""
@@ -110,14 +104,13 @@ def convert_narration_script(text):
             time_num_part = f"{display_mm:02d}{display_ss:02d}".translate(to_zenkaku_num)
             formatted_start_time = f"{time_num_part}半"
             spacer = "　　"
-        else: # 23F以降
+        else:
             total_seconds_in_minute_loop += 1
             display_mm = (total_seconds_in_minute_loop // 60) % 60
             display_ss = total_seconds_in_minute_loop % 60
             formatted_start_time = f"{display_mm:02d}{display_ss:02d}".translate(to_zenkaku_num)
             spacer = "　　　"
 
-        # ... (中略：話者、本文の処理は変更なし) ...
         speaker_symbol = 'Ｎ'
         text_content = block['text']
         body = ""
