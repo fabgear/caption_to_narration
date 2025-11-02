@@ -12,7 +12,7 @@ def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=Fa
 
     to_zenkaku_num = str.maketrans('0123456789', '０１２３４５６７８９')
 
-hankaku_symbols = '!@#$%&-+='
+    hankaku_symbols = '!@#$%&-+='
     zenkaku_symbols = '！＠＃＄％＆－＋＝'
     
     hankaku_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ' + hankaku_symbols
