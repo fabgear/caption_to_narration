@@ -3,9 +3,10 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver4.7：本文なし警告の強制表示）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver4.0：MM:SS出力ロジック追加）▼▼▼
 # ===============================================================
-def convert_narration_script(text, n_force_insert_flag=True):
+# ▼▼▼【ver4.0 変更点】mm_ss_colon_flag を受け取るように変更 ▼▼▼
+def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=False):
     # （中略：時間ロジック、Hマーカーロジックは変更なし）
     FRAME_RATE = 30.0
     CONNECTION_THRESHOLD = 1.0 + (10.0 / FRAME_RATE)
@@ -84,22 +85,40 @@ def convert_narration_script(text, n_force_insert_flag=True):
         if should_insert_h_marker:
              output_lines.append("")
              output_lines.append(f"【{str(marker_hh_to_display).translate(to_zenkaku_num)}Ｈ】")
-             #output_lines.append("")
+             output_lines.append("")
              
         previous_end_hh = end_hh 
 
         total_seconds_in_minute_loop = (start_mm % 60) * 60 + start_ss
         spacer = ""
+        
+        # 開始時間の MMSS を計算
         if 0 <= start_fr <= 9:
             display_mm = (total_seconds_in_minute_loop // 60) % 60; display_ss = total_seconds_in_minute_loop % 60
-            formatted_start_time = f"{display_mm:02d}{display_ss:02d}".translate(to_zenkaku_num); spacer = "　　　"
+            base_time_str = f"{display_mm:02d}{display_ss:02d}"
+            spacer = "　　　"
         elif 10 <= start_fr <= 22:
             display_mm = (total_seconds_in_minute_loop // 60) % 60; display_ss = total_seconds_in_minute_loop % 60
-            time_num_part = f"{display_mm:02d}{display_ss:02d}".translate(to_zenkaku_num); formatted_start_time = f"{time_num_part}半"; spacer = "　　"
+            base_time_str = f"{display_mm:02d}{display_ss:02d}"
+            formatted_start_time = f"{base_time_str.translate(to_zenkaku_num)}半"; spacer = "　　"
         else:
             total_seconds_in_minute_loop += 1
             display_mm = (total_seconds_in_minute_loop // 60) % 60; display_ss = total_seconds_in_minute_loop % 60
-            formatted_start_time = f"{display_mm:02d}{display_ss:02d}".translate(to_zenkaku_num); spacer = "　　　"
+            base_time_str = f"{display_mm:02d}{display_ss:02d}"
+            spacer = "　　　"
+
+        # ▼▼▼【ver4.0 変更点】mm_ss_colon_flag に応じた時刻表記の整形 ▼▼▼
+        if 10 <= start_fr <= 22:
+            # 「半」が入る場合は、既に上でformatted_start_timeが定義されているためスキップ
+            pass
+        elif mm_ss_colon_flag:
+            # コロンフラグがONの場合、MM:SS 形式にする
+            mm_part = base_time_str[:2]; ss_part = base_time_str[2:]
+            formatted_start_time = f"{mm_part}：{ss_part}".translate(to_zenkaku_num)
+        else:
+            # コロンフラグがOFFの場合、MMSS 形式にする
+            formatted_start_time = base_time_str.translate(to_zenkaku_num)
+        # ▲▲▲【ver4.0 変更点】ここまで ▼▼▼
 
         speaker_symbol = 'Ｎ'
         text_content = block['text']
@@ -118,14 +137,12 @@ def convert_narration_script(text, n_force_insert_flag=True):
                 else: body = text_content
             if not body: body = "※注意！本文なし！"
         else:
-            # ▼▼▼【ver4.7 修正点】チェックなしの場合の処理に本文なしチェックを追加 ▼▼▼
             speaker_symbol = '' # 話者記号は空
             body = text_content # 元のテキスト全体を本文として扱う
             
             # 本文が空（または空白のみ）の場合、警告を出す
             if not body.strip():
                 body = "※注意！本文なし！"
-        # ▲▲▲【ver4.7 修正点】ここまで ▼▼▼
 
         body = body.translate(to_zenkaku_all)
         
@@ -163,20 +180,20 @@ def convert_narration_script(text, n_force_insert_flag=True):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - （ver4.7：UIと機能統合）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - （ver4.0：MM:SS出力オプション）▼▼▼
 # ===============================================================
-# （UI部分はver4.1と同一）
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
 st.markdown("""<style> 
 textarea::placeholder { 
-    font-size: 13px; /* プレースホルダーのサイズ */
+    font-size: 13px;
 } 
 textarea {
-    font-size: 14px !important; /* ★入力・出力テキスト全体のサイズを14pxに指定 */
+    font-size: 14px !important;
 }
 </style>""", unsafe_allow_html=True)
+
 col1, col2 = st.columns(2)
 
 help_text = """
@@ -189,6 +206,9 @@ help_text = """
 ・ナレーション本文の半角英数字は全て全角に変換します  
 """
 
+# ----------------------------------------------------------------------------------
+# 1. 左カラム（入力とオプション）
+# ----------------------------------------------------------------------------------
 with col1:
     st.header('')
     
@@ -210,24 +230,39 @@ N ああああ
         help=help_text
     )
     
-    n_force_insert = st.checkbox("N強制挿入", value=True)
+    # ▼▼▼【ver4.0 変更点】チェックボックスを左右に並べる ▼▼▼
+    col_checkbox_left, col_checkbox_right = st.columns(2)
+    
+    with col_checkbox_left:
+        n_force_insert = st.checkbox("N強制挿入", value=True)
+    
+    with col_checkbox_right:
+        # デフォルトは False
+        mm_ss_colon = st.checkbox("ｍｍ：ｓｓで出力", value=False)
+        # ▲▲▲【ver4.0 変更点】ここまで ▼▼▼
 
 
+# ----------------------------------------------------------------------------------
+# 2. 右カラム（出力）
+# ----------------------------------------------------------------------------------
 with col2:
     st.header('')
     
     if input_text:
         try:
-            converted_text = convert_narration_script(input_text, n_force_insert)
+            # ▼▼▼【ver4.0 変更点】変換関数にフラグを渡す ▼▼▼
+            converted_text = convert_narration_script(input_text, n_force_insert, mm_ss_colon)
             
             st.text_area("　コピーしてお使いください", value=converted_text, height=500)
             
-            st.markdown('<div style="height: 38px;"></div>', unsafe_allow_html=True)
-            
+            # 左カラムのチェックボックス（2つ分）と余白の高さを確保
+            st.markdown('<div style="height: 76px;"></div>', unsafe_allow_html=True) # 2行分のチェックボックスの高さ
+
         except Exception as e:
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
-            st.markdown('<div style="height: 38px;"></div>', unsafe_allow_html=True)
+            st.markdown('<div style="height: 538px;"></div>', unsafe_allow_html=True) 
     else:
+        # 入力がない場合、右側を完全に空にするが、高さは維持
         st.markdown('<div style="height: 538px;"></div>', unsafe_allow_html=True) 
 
 
