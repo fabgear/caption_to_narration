@@ -208,10 +208,10 @@ help_text = """
 　分をまたぐ時は(分秒)、次のナレーションと繋がる時は割愛されます  
 ・Hをまたぐときは自動で仕切りが入ります  
    
-・左下の☑がONの場合、本文前に自動で全角Ｎが挿入されます  
+・☑N強制挿入がONの場合、自動で全角Ｎが挿入されます  
 　※ＶＯや実況などはそのまま表記  
 ・ナレーション本文の半角英数字は全て全角に変換します  
-・ｍｍ：ｓｓ形式で出力したいときは左下の☑をＯＮに  
+・☑ｍｍ：ｓｓで出力がONの場合タイムに：が入ります    
 """
 
 with col1:
@@ -257,7 +257,7 @@ with col2:
             # ▼▼▼【ver4.4 修正点】変換関数にフラグを渡す ▼▼▼
             converted_text = convert_narration_script(input_text, n_force_insert, mm_ss_colon)
             
-            st.text_area("　コピーしてお使いください", value=converted_text, height=500)
+            st.text_area("　変換完了！コピーしてお使いください", value=converted_text, height=500)
             
             # 左カラムのチェックボックス（2つ分）の高さに合わせる
             st.markdown('<div style="height: 76px;"></div>', unsafe_allow_html=True) 
