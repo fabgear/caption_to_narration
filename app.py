@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver4.3：MM:SS半の共存と最終化）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver4.4：MM:SSと「半」の共存修正）▼▼▼
 # ===============================================================
 def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=False):
     # （中略：時間ロジック、Hマーカーロジックは変更なし）
@@ -110,7 +110,7 @@ def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=Fa
             base_time_str = f"{display_mm:02d}{display_ss:02d}"
             spacer = "　　　"
 
-        # ▼▼▼【ver4.3 修正点】最終的なformatted_start_timeの決定ロジックを統合 ▼▼▼
+        # ▼▼▼【ver4.4 修正点】最終的なformatted_start_timeの決定ロジックを統合 ▼▼▼
         # base_time_str (MMSS) にコロンを挿入
         if mm_ss_colon_flag:
             mm_part = base_time_str[:2]; ss_part = base_time_str[2:]
@@ -123,7 +123,7 @@ def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=Fa
             formatted_start_time = f"{colon_time_str.translate(to_zenkaku_num)}半"
         else:
             formatted_start_time = colon_time_str.translate(to_zenkaku_num)
-        # ▲▲▲【ver4.3 修正点】ここまで ▼▼▼
+        # ▲▲▲【ver4.4 修正点】ここまで ▼▼▼
 
 
         speaker_symbol = 'Ｎ'
@@ -186,7 +186,7 @@ def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=Fa
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - （ver4.3：MM:SSと「半」の共存修正）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - （ver4.4：UIと機能統合）▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
@@ -212,9 +212,6 @@ help_text = """
 ・ナレーション本文の半角英数字は全て全角に変換します  
 """
 
-# ----------------------------------------------------------------------------------
-# 1. 左カラム（入力とオプション）
-# ----------------------------------------------------------------------------------
 with col1:
     st.header('')
     
@@ -236,7 +233,7 @@ N ああああ
         help=help_text
     )
     
-    # ▼▼▼【ver4.3 変更点】チェックボックスを左右に並べる ▼▼▼
+    # ▼▼▼【ver4.4 修正点】チェックボックスを左右に並べる ▼▼▼
     col_checkbox_left, col_checkbox_right = st.columns(2)
     
     with col_checkbox_left:
@@ -244,21 +241,37 @@ N ああああ
     
     with col_checkbox_right:
         mm_ss_colon = st.checkbox("ｍｍ：ｓｓで出力", value=False)
-        # ▲▲▲【ver4.3 変更点】ここまで ▼▼▼
+        # ▲▲▲【ver4.4 修正点】ここまで ▼▼▼
 
 
-# ----------------------------------------------------------------------------------
-# 2. 右カラム（出力）
-# ----------------------------------------------------------------------------------
 with col2:
     st.header('')
     
     if input_text:
         try:
-            # ▼▼▼【ver4.3 変更点】変換関数にフラグを渡す ▼▼▼
+            # ▼▼▼【ver4.4 修正点】変換関数にフラグを渡す ▼▼▼
             converted_text = convert_narration_script(input_text, n_force_insert, mm_ss_colon)
             
             st.text_area("　コピーしてお使いください", value=converted_text, height=500)
             
             # 左カラムのチェックボックス（2つ分）の高さに合わせる
-            st.markdown('<div style="height: 76px;"></div>', unsafe_allo
+            st.markdown('<div style="height: 76px;"></div>', unsafe_allow_html=True) 
+
+        except Exception as e:
+            st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
+            st.markdown('<div style="height: 538px;"></div>', unsafe_allow_html=True) 
+    else:
+        # 入力がない場合、右側を完全に空にするが、高さは維持
+        st.markdown('<div style="height: 538px;"></div>', unsafe_allow_html=True) 
+
+
+# --- フッターをカスタマイズ ---
+st.markdown("---")
+st.markdown(
+    """
+    <div style="text-align: right; font-size: 12px; color: #C5D6B9;">
+        © 2025 kimika Inc. All rights reserved.
+    </div>
+    """,
+    unsafe_allow_html=True
+)
