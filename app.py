@@ -6,7 +6,6 @@ import math
 # ▼▼▼ ツールの本体（エンジン部分）- （変更なし）▼▼▼
 # ===============================================================
 def convert_narration_script(text):
-    # --- 変換テーブルの準備 ---
     to_zenkaku_num = str.maketrans('0123456789', '０１２３４５６７８９')
     hankaku_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '
     zenkaku_chars = 'ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９　'
@@ -105,7 +104,7 @@ def convert_narration_script(text):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - 【ポップアップ＆フッター追加版】▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - 【tooltipのバグ修正版】▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
@@ -113,16 +112,8 @@ st.title('Caption to Narration')
 st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
 col1, col2 = st.columns(2)
 
-with col1:
-    st.header('')
-    
-    # --- ▼▼▼【変更点1】入力エリアのタイトルと、ポップアップを追加 ▼▼▼ ---
-    # 横並びにするためのコンテナを用意
-    c = st.container()
-    c.write("ナレーション原稿形式に変換します")
-    
-    with c:
-        with st.tooltip("""
+# --- ▼▼▼【変更点】ここでポップアップで表示したいヘルプテキストを先に定義します ▼▼▼ ---
+help_text = """
 【話者名のルール】
 ・行頭に「N」や「n」があれば「Ｎ」になります。
 ・行頭に「VO」や「木村」などがあれば、それが話者名になります。
@@ -133,14 +124,17 @@ with col1:
 ・先頭のシーケンス名や余分な改行は自動で無視します。
 ・１時間を超えるタイムコード（hh:mm:ss）にも対応しています。
 ・半角の英数字は、すべて全角に変換されます。
-        """):
-            st.caption("詳しい仕様 (?)") # (?) を付けると、ここにマウスを乗せれば良いと分かりやすい
+"""
 
+with col1:
+    st.header('')
+    
+    # --- ▼▼▼【変更点】`st.text_area`に、`help`引数を追加します ▼▼▼ ---
     input_text = st.text_area(
-        "Premiereで書き出したキャプションをペーストして [Ctrl+Enter] ", 
+        "ナレーション原稿形式に変換します", 
         height=500, 
         placeholder="ここにテキストを貼り付けてください",
-        label_visibility="collapsed" # ラベルを非表示にしてスッキリさせる
+        help=help_text # ここに追加！
     )
 
 with col2:
@@ -152,6 +146,6 @@ with col2:
         except Exception as e:
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
 
-# --- ▼▼▼【変更点2】ページ下部にフッター（コピーライト表記）を追加 ▼▼▼ ---
-st.markdown("---") # 区切り線
+# --- フッター（コピーライト表記）は変更なし ---
+st.markdown("---")
 st.caption("Created by kimika Inc.")
