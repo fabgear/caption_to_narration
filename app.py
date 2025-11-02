@@ -1,14 +1,12 @@
 import streamlit as st
 import re
 import math
-# ▼▼▼【ver4.4 変更点】外部ライブラリのインポートを削除（エラーを解消） ▼▼▼
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver4.4：ロジック変更なし）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver4.7：本文なし警告の強制表示）▼▼▼
 # ===============================================================
-# N_FORCE_INSERT_FLAG を受け取るように変更
 def convert_narration_script(text, n_force_insert_flag=True):
-    # （中略：ロジックはver3と同一。機能は実装済み）
+    # （中略：時間ロジック、Hマーカーロジックは変更なし）
     FRAME_RATE = 30.0
     CONNECTION_THRESHOLD = 1.0 + (10.0 / FRAME_RATE)
 
@@ -86,7 +84,7 @@ def convert_narration_script(text, n_force_insert_flag=True):
         if should_insert_h_marker:
              output_lines.append("")
              output_lines.append(f"【{str(marker_hh_to_display).translate(to_zenkaku_num)}Ｈ】")
-             output_lines.append("")
+             #output_lines.append("")
              
         previous_end_hh = end_hh 
 
@@ -120,12 +118,14 @@ def convert_narration_script(text, n_force_insert_flag=True):
                 else: body = text_content
             if not body: body = "※注意！本文なし！"
         else:
+            # ▼▼▼【ver4.7 修正点】チェックなしの場合の処理に本文なしチェックを追加 ▼▼▼
             speaker_symbol = '' # 話者記号は空
             body = text_content # 元のテキスト全体を本文として扱う
             
             # 本文が空（または空白のみ）の場合、警告を出す
             if not body.strip():
                 body = "※注意！本文なし！"
+        # ▲▲▲【ver4.7 修正点】ここまで ▼▼▼
 
         body = body.translate(to_zenkaku_all)
         
@@ -163,21 +163,20 @@ def convert_narration_script(text, n_force_insert_flag=True):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - （ver4.4：最終安定版とボタン配置）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - （ver4.7：UIと機能統合）▼▼▼
 # ===============================================================
+# （UI部分はver4.1と同一）
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
-# ▼▼▼【ver4.4 変更点】CSSは文字サイズのみ維持 ▼▼▼
 st.markdown("""<style> 
 textarea::placeholder { 
-    font-size: 13px;
+    font-size: 13px; /* プレースホルダーのサイズ */
 } 
 textarea {
-    font-size: 14px !important;
+    font-size: 14px !important; /* ★入力・出力テキスト全体のサイズを14pxに指定 */
 }
 </style>""", unsafe_allow_html=True)
-
 col1, col2 = st.columns(2)
 
 help_text = """
@@ -190,9 +189,6 @@ help_text = """
 ・ナレーション本文の半角英数字は全て全角に変換します  
 """
 
-# ----------------------------------------------------------------------------------
-# 1. 左カラム（入力）
-# ----------------------------------------------------------------------------------
 with col1:
     st.header('')
     
@@ -217,45 +213,22 @@ N ああああ
     n_force_insert = st.checkbox("N強制挿入", value=True)
 
 
-# ----------------------------------------------------------------------------------
-# 2. 右カラム（出力）
-# ----------------------------------------------------------------------------------
 with col2:
+    st.header('')
     
     if input_text:
         try:
             converted_text = convert_narration_script(input_text, n_force_insert)
             
-            # ▼▼▼【ver4.4 変更点】ヘッダーとボタンを同じ行に配置し、ボタンはコピー促し専用にする ▼▼▼
-            col_title, col_button = st.columns([0.65, 0.35]) 
-
-            with col_title:
-                st.header('コピーしてお使いください')
+            st.text_area("コピーしてお使いください", value=converted_text, height=500)
             
-            with col_button:
-                # headerの余白に合わせるための隠し要素を配置 (headerは約38pxの高さを持つ)
-                st.markdown('<div style="height: 38px;"></div>', unsafe_allow_html=True) 
-                
-                # ボタンは操作を促す目的のシンプルなもの
-                if st.button("クリップボードにコピー", key="copy_btn", type="primary"):
-                    # ボタンが押されたら、テキストエリアの内容を Ctrl+A, Ctrl+C でコピーするように促す
-                    st.warning("Ctrl+A で全選択後、Ctrl+C でコピーしてください。")
-            
-            # 出力テキストエリア（左と同じ500pxに固定）
-            st.text_area("　", value=converted_text, height=500)
-            
-            # 左のチェックボックスの高さ分、下の余白を確保し、フッターとの距離を揃える
             st.markdown('<div style="height: 38px;"></div>', unsafe_allow_html=True)
             
         except Exception as e:
-            st.header('') # ヘッダー分の高さを確保
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
-            # エラー時もテキストエリアとボタンの分の高さを確保
-            st.markdown('<div style="height: 538px;"></div>', unsafe_allow_html=True) 
+            st.markdown('<div style="height: 38px;"></div>', unsafe_allow_html=True)
     else:
-        # 入力がない場合、右側を完全に空にするが、高さは維持
-        st.header('') # ヘッダー分の高さを確保
-        st.markdown('<div style="height: 538px;"></div>', unsafe_allow_html=True) # テキストエリアとボタンの分の高さを確保
+        st.markdown('<div style="height: 538px;"></div>', unsafe_allow_html=True) 
 
 
 # --- フッターをカスタマイズ ---
