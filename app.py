@@ -3,18 +3,14 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver3.1：致命的バグ修正とN強制挿入実装）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver2.4：最終表記調整）▼▼▼
 # ===============================================================
-# N_FORCE_INSERT_FLAG を受け取るように変更
-def convert_narration_script(text, n_force_insert_flag=True):
+def convert_narration_script(text):
     # --- 設定値 ---
     FRAME_RATE = 30.0
     CONNECTION_THRESHOLD = 1.0 + (10.0 / FRAME_RATE)
 
-    # ▼▼▼【ver3.1 修正点】全角数字の定義を修正（2と7の全角を再挿入）▼▼▼
     to_zenkaku_num = str.maketrans('0123456789', '０１２３４５６７８９')
-    # ▲▲▲【ver3.1 修正点】ここまで ▲▲▲
-
     hankaku_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '
     zenkaku_chars = 'ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９　'
     to_zenkaku_all = str.maketrans(hankaku_chars, zenkaku_chars)
@@ -51,7 +47,7 @@ def convert_narration_script(text, n_force_insert_flag=True):
                     text_val = next_line; i += 1
             blocks.append({'time': time_val, 'text': text_val})
         i += 1
-        
+
     output_lines = []
     
     parsed_blocks = []
@@ -75,16 +71,23 @@ def convert_narration_script(text, n_force_insert_flag=True):
         start_hh, start_mm, start_ss, start_fr = block['start_hh'], block['start_mm'], block['start_ss'], block['start_fr']
         end_hh, end_mm, end_ss, end_fr = block['end_hh'], block['end_mm'], block['end_ss'], block['end_fr']
 
-        # Hマーカーロジック（ver2.3を維持）
         should_insert_h_marker = False
         marker_hh_to_display = -1
         
         if i == 0:
-            if start_hh > 0: should_insert_h_marker = True; marker_hh_to_display = start_hh
+            if start_hh > 0:
+                 should_insert_h_marker = True
+                 marker_hh_to_display = start_hh
             previous_end_hh = end_hh 
+        
         else:
-            if start_hh < end_hh: should_insert_h_marker = True; marker_hh_to_display = end_hh 
-            elif start_hh > previous_end_hh: should_insert_h_marker = True; marker_hh_to_display = start_hh 
+            if start_hh < end_hh:
+                 should_insert_h_marker = True
+                 marker_hh_to_display = end_hh 
+            
+            elif start_hh > previous_end_hh: 
+                 should_insert_h_marker = True
+                 marker_hh_to_display = start_hh 
 
         if should_insert_h_marker:
              output_lines.append("")
@@ -93,47 +96,44 @@ def convert_narration_script(text, n_force_insert_flag=True):
              
         previous_end_hh = end_hh 
 
-        # 開始時間ロジック（ver1.7を維持）
+        # 以下、開始時間、本文、終了時間ロジックはver1.7/1.8/1.9のロジックを維持
         total_seconds_in_minute_loop = (start_mm % 60) * 60 + start_ss
+        
         spacer = ""
         if 0 <= start_fr <= 9:
-            display_mm = (total_seconds_in_minute_loop // 60) % 60; display_ss = total_seconds_in_minute_loop % 60
+            display_mm = (total_seconds_in_minute_loop // 60) % 60
+            display_ss = total_seconds_in_minute_loop % 60
             formatted_start_time = f"{display_mm:02d}{display_ss:02d}".translate(to_zenkaku_num)
             spacer = "　　　"
         elif 10 <= start_fr <= 22:
-            display_mm = (total_seconds_in_minute_loop // 60) % 60; display_ss = total_seconds_in_minute_loop % 60
+            display_mm = (total_seconds_in_minute_loop // 60) % 60
+            display_ss = total_seconds_in_minute_loop % 60
             time_num_part = f"{display_mm:02d}{display_ss:02d}".translate(to_zenkaku_num)
-            formatted_start_time = f"{time_num_part}半"; spacer = "　　"
+            formatted_start_time = f"{time_num_part}半"
+            spacer = "　　"
         else:
             total_seconds_in_minute_loop += 1
-            display_mm = (total_seconds_in_minute_loop // 60) % 60; display_ss = total_seconds_in_minute_loop % 60
-            formatted_start_time = f"{display_mm:02d}{display_ss:02d}".translate(to_zenkaku_num); spacer = "　　　"
+            display_mm = (total_seconds_in_minute_loop // 60) % 60
+            display_ss = total_seconds_in_minute_loop % 60
+            formatted_start_time = f"{display_mm:02d}{display_ss:02d}".translate(to_zenkaku_num)
+            spacer = "　　　"
 
         speaker_symbol = 'Ｎ'
         text_content = block['text']
         body = ""
-
-        # ▼▼▼【ver3.1 N強制挿入ロジック】ここを修正 ▼▼▼
-        if n_force_insert_flag:
-            match = re.match(r'^(\S+)\s+(.*)', text_content)
-            if match:
-                raw_speaker = match.group(1); body = match.group(2).strip()
-                if raw_speaker.upper() == 'N': speaker_symbol = 'Ｎ'
-                else: speaker_symbol = raw_speaker.translate(to_zenkaku_all)
-            else:
-                if text_content.upper() == 'N' or text_content == 'Ｎ': body = ""
-                elif text_content.startswith('Ｎ '): body = text_content[2:].strip()
-                elif text_content.startswith('N '): body = text_content[2:].strip()
-                else: body = text_content
-            if not body: body = "※注意！本文なし！"
+        match = re.match(r'^(\S+)\s+(.*)', text_content)
+        if match:
+            raw_speaker = match.group(1); body = match.group(2).strip()
+            if raw_speaker.upper() == 'N': speaker_symbol = 'Ｎ'
+            else: speaker_symbol = raw_speaker.translate(to_zenkaku_all)
         else:
-            # N強制挿入がOFFの場合: 話者/本文の処理を一切行わず、そのまま出力
-            speaker_symbol = ''; body = text_content
-        # ▲▲▲【ver3.1 修正点】ここまで ▲▲▲
-
+            if text_content.upper() == 'N' or text_content == 'Ｎ': body = ""
+            elif text_content.startswith('Ｎ '): body = text_content[2:].strip()
+            elif text_content.startswith('N '): body = text_content[2:].strip()
+            else: body = text_content
+        if not body: body = "※注意！本文なし！"
         body = body.translate(to_zenkaku_all)
         
-        # （中略：終了時間とつながり判定ロジックは変更なし）
         end_string = ""; add_blank_line = True
         
         if i + 1 < len(parsed_blocks):
@@ -144,9 +144,14 @@ def convert_narration_script(text, n_force_insert_flag=True):
                 add_blank_line = False
 
         if add_blank_line:
-            adj_ss = end_ss; adj_mm = end_mm
-            if 0 <= end_fr <= 9: adj_ss = end_ss - 1; 
-            if adj_ss < 0: adj_ss = 59; adj_mm -= 1
+            adj_ss = end_ss
+            adj_mm = end_mm
+
+            if 0 <= end_fr <= 9:
+                adj_ss = end_ss - 1
+                if adj_ss < 0:
+                    adj_ss = 59
+                    adj_mm -= 1
             
             adj_mm_display = adj_mm % 60
             
@@ -165,15 +170,14 @@ def convert_narration_script(text, n_force_insert_flag=True):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - （ver3.1：UIシンプル化）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - （ver2）▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
-# UIシンプル化のため、カスタムCSSも初期状態に戻す
 st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
+col1, col2 = st.columns(2)
 
-# ヘルプテキストを定義（変更なし）
 help_text = """
 【機能詳細】  
 ・ENDタイム(秒のみ)が自動で入ります  
@@ -184,17 +188,11 @@ help_text = """
 ・ナレーション本文の半角英数字は全て全角に変換します  
 """
 
-col1, col2 = st.columns(2)
-
-# Col 1: 入力エリア側
 with col1:
-    # --- タイトル（シンプルに戻す） ---
-    st.markdown('ナレーション原稿形式に変換します') 
-
-    # --- テキストエリア本体 ---
-    # labelを削除して、placeholderで調整
+    st.header('')
+    
     input_text = st.text_area(
-        "　",
+        "ナレーション原稿形式に変換します", 
         height=500, 
         placeholder="""①キャプションをテキストで書き出した形式
 00;00;00;00 - 00;00;02;29
@@ -210,31 +208,15 @@ N ああああ
 """,
         help=help_text
     )
-    
-    # ▼▼▼【ver3.1 UI修正点】チェックボックスの表示と状態の取得 ▼▼▼
-    checkbox_state = st.checkbox("N強制挿入", value=True)
-    # ----------------------------------------------------------------------
 
-# Col 2: 出力エリア側
 with col2:
+    st.header('')
     if input_text:
-        # 入力がある場合のみ、タイトルとテキストエリアを表示
-        st.markdown('コピーしてお使いください') 
-        
         try:
-            # ▼▼▼【ver3.1 機能連動】変換関数にフラグを渡す ▼▼▼
-            converted_text = convert_narration_script(input_text, checkbox_state)
-            st.text_area("　", value=converted_text, height=500)
-            
-            # ▼▼▼【ver3.1 UI修正点】高さ合わせのためのプレースホルダー（重要） ▼▼▼
-            # チェックボックスと同じ分の高さを確保 (st.checkboxは約38px)
-            st.markdown('<div style="height: 38px;"></div>', unsafe_allow_html=True) 
-            
+            converted_text = convert_narration_script(input_text)
+            st.text_area("コピーしてお使いください", value=converted_text, height=500)
         except Exception as e:
-            # エラー時も右側の高さを維持
-            st.text_area("　", value="エラーが発生しました。テキストの形式を確認してください。", height=500)
-            st.error(f"詳細: {e}")
-            st.markdown('<div style="height: 38px;"></div>', unsafe_allow_html=True)
+            st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
 
 # --- フッターをカスタマイズ ---
 st.markdown("---")
