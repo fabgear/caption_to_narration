@@ -109,7 +109,7 @@ def convert_narration_script(text, force_n_insertion):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - 【UIバグ修正・最終完成版】▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - 【お客様の新しいレイアウト案をシンプルに実現】▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
@@ -128,22 +128,14 @@ help_text = """
 """
 
 with col1:
-    # --- ▼▼▼【変更点】ここからが、お客様の理想のUIを実現するためのコードです ▼▼▼ ---
+    st.header('')
     
-    # 1. まず、部品を横並びにするための「箱」を準備します
-    label_container = st.container()
-    with label_container:
-        # st.columnsを使って、左側のタイトルと右側のチェックボックスを配置します
-        left_col, right_col = st.columns([0.8, 0.2]) # 横幅の比率を調整
-        with left_col:
-            st.write("ナレーション原稿形式に変換します")
-        with right_col:
-            # チェックボックスにはヘルプテキストは付けません
-            force_n_insertion = st.checkbox("N強制挿入", value=True)
-
-    # 2. 次に、お客様が完成させたVer.1のテキスト入力エリアを、一切変更せずにそのまま配置します
+    # --- ▼▼▼【変更点】ここからが、お客様の新しいレイアウト案をシンプルに実現するコードです ▼▼▼ ---
+    
+    # 1. お客様のVer.1のtext_areaを、一切変更せずにそのまま配置します
+    #    これが「タイトル＋？マーク」と「テキストボックス」の両方の役割を果たします
     input_text = st.text_area(
-        "ナレーション原稿形式に変換します", # このラベルは表示されませんが、help機能のために必要です
+        "ナレーション原稿形式に変換します", 
         height=500, 
         placeholder="""キャプションをテキストで書き出した形式
 00;00;00;00 - 00;00;02;29
@@ -157,16 +149,20 @@ N ああああ
 ※混在も可能です
 
 """,
-        help=help_text,
-        label_visibility="collapsed" # 自作ラベルがあるので、本来のラベルは非表示にします
+        help=help_text
     )
+
+    # 2. テキストボックスの下に、チェックボックスを配置します
+    force_n_insertion = st.checkbox("N強制挿入", value=True)
+
 
 with col2:
     st.header('')
     if input_text:
         try:
+            # --- ▼▼▼【変更点】チェックボックスの状態を関数に渡します ▼▼▼ ---
             converted_text = convert_narration_script(input_text, force_n_insertion)
-            st.text_area("コピーしてお使いください", value=converted_text, height=500)
+            st.text_area("コピーしてお使いください", value=converted_text, height=500, label_visibility="collapsed")
         except Exception as e:
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
 
