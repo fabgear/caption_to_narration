@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver2.5：ロジック変更なし）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver2.6：ロジック変更なし）▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 設定値 ---
@@ -169,12 +169,27 @@ def convert_narration_script(text):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - （ver2.5：UI整形）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - （ver2.6：UI最終調整）▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
-st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
+# ▼▼▼【ver2.6 変更点】カスタムCSSの追加 ▼▼▼
+st.markdown("""
+<style> 
+textarea::placeholder { font-size: 13px; } 
+
+/* 左カラムのタイトルとテキストエリアの間の余白を調整 */
+.stColumns > div:nth-child(1) .stMarkdown {
+    margin-bottom: 0px !important; /* Markdownの下の余白を削除 */
+}
+/* テキストエリア本体の上部の余白も調整 */
+.stTextArea {
+    margin-top: 0px !important; 
+}
+</style>
+""", unsafe_allow_html=True)
+# ▲▲▲【ver2.6 変更点】ここまで ▲▲▲
 
 # ヘルプテキストを定義（変更なし）
 help_text = """
@@ -187,18 +202,16 @@ help_text = """
 ・ナレーション本文の半角英数字は全て全角に変換します  
 """
 
-# ▼▼▼【ver2.5 変更点】上下の要素をプレースホルダとして事前に配置し、テキストエリアの開始位置を揃える ▼▼▼
 col1, col2 = st.columns(2)
 
 # Col 1: 入力エリア側
 with col1:
     # --- ヘッダーとその他の上部要素（将来のボタンなど）を配置 ---
-    st.markdown('**ナレーション原稿形式に変換します**') # st.headerの代わりにマークダウンで統一
-    # 将来的にボタンなどを追加する場合はこのエリアに追加し、下のテキストエリアに影響を与えないように調整
+    st.markdown('ナレーション原稿形式に変換します') 
 
     # --- テキストエリア本体 ---
     input_text = st.text_area(
-        "　", # ラベルをスペースにすることで、見た目上の余分なスペースを減らす
+        "　",
         height=500, 
         placeholder="""①キャプションをテキストで書き出した形式
 00;00;00;00 - 00;00;02;29
@@ -217,15 +230,13 @@ N ああああ
 
 # Col 2: 出力エリア側
 with col2:
-    # --- ヘッダーとその他の上部要素（将来のコピーボタンなど）を配置 ---
-    st.markdown('**コピーしてお使いください**') # st.headerの代わりにマークダウンで統一
-    # ここに将来、コピーボタンなどを追加した場合でも、左カラムのレイアウトと高さを揃えることが重要
-
-    # --- テキストエリア本体 ---
     if input_text:
+        # ▼▼▼【ver2.6 変更点】input_textがあるときだけタイトルを表示 ▼▼▼
+        st.markdown('コピーしてお使いください') 
+        
         try:
             converted_text = convert_narration_script(input_text)
-            st.text_area("　", value=converted_text, height=500) # ラベルをスペースに
+            st.text_area("　", value=converted_text, height=500)
         except Exception as e:
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
 
