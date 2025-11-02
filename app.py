@@ -198,6 +198,16 @@ textarea::placeholder {
 textarea {
     font-size: 14px !important;
 }
+/* st.columns の padding を調整し、チェックボックス間の隙間を詰める */
+.stColumns:nth-child(4) > div { /* 4番目のstColumns（チェックボックスの段）を特定 */
+    padding-left: 0.2rem !important; 
+    padding-right: 0.2rem !important;
+}
+
+/* チェックボックスの直後のマージンを詰める */
+.stColumns:nth-child(4) .stCheckbox {
+    margin-right: 0.5rem; 
+}
 </style>""", unsafe_allow_html=True)
 
 col1, col2 = st.columns(2)
