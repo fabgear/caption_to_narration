@@ -3,10 +3,10 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver5.3：ロジック変更なし）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver4.4：MM:SSと「半」の共存修正）▼▼▼
 # ===============================================================
 def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=False):
-    # （ロジックはver4.4と同一）
+    # （中略：時間ロジック、Hマーカーロジックは変更なし）
     FRAME_RATE = 30.0
     CONNECTION_THRESHOLD = 1.0 + (10.0 / FRAME_RATE)
 
@@ -110,7 +110,7 @@ def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=Fa
             base_time_str = f"{display_mm:02d}{display_ss:02d}"
             spacer = "　　　"
 
-        # 2. 最終的なformatted_start_timeの決定ロジックを統合
+        # ▼▼▼【ver4.4 修正点】最終的なformatted_start_timeの決定ロジックを統合 ▼▼▼
         # base_time_str (MMSS) にコロンを挿入
         if mm_ss_colon_flag:
             mm_part = base_time_str[:2]; ss_part = base_time_str[2:]
@@ -123,6 +123,7 @@ def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=Fa
             formatted_start_time = f"{colon_time_str.translate(to_zenkaku_num)}半"
         else:
             formatted_start_time = colon_time_str.translate(to_zenkaku_num)
+        # ▲▲▲【ver4.4 修正点】ここまで ▼▼▼
 
 
         speaker_symbol = 'Ｎ'
@@ -185,12 +186,11 @@ def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=Fa
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - （ver5.3：CSSで隙間を詰める最終調整）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - （ver4.4：UIと機能統合）▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
-# ▼▼▼【ver5.3 変更点】CSSでカラムの余白とチェックボックスの間隔を詰める ▼▼▼
 st.markdown("""<style> 
 textarea::placeholder { 
     font-size: 13px;
@@ -198,23 +198,10 @@ textarea::placeholder {
 textarea {
     font-size: 14px !important;
 }
-
-/* 2段目のカラムの余白を詰める */
-.stColumns:nth-child(4) > div { /* 4番目のstColumns（チェックボックスの段） */
-    padding-left: 0.5rem !important;
-    padding-right: 0.5rem !important;
-}
-/* st.checkbox の間のマージンを調整 */
-.stColumns:nth-child(4) .stCheckbox {
-    margin-right: 0rem; /* 標準のマージンを削除 */
-    margin-left: 0rem; 
-}
 </style>""", unsafe_allow_html=True)
-# ▲▲▲【ver5.3 変更点】ここまで ▼▼▼
 
-# ----------------------------------------------------------------------------------
-# 0. help_textの定義
-# ----------------------------------------------------------------------------------
+col1, col2 = st.columns(2)
+
 help_text = """
 【機能詳細】  
 ・ENDタイム(秒のみ)が自動で入ります  
@@ -225,28 +212,11 @@ help_text = """
 ・ナレーション本文の半角英数字は全て全角に変換します  
 """
 
-# ----------------------------------------------------------------------------------
-# 1段目：メインのテキストエリアとタイトル
-# ----------------------------------------------------------------------------------
-col1_top, col2_top = st.columns(2)
-
-# タイトルはテキストエリアと同一カラムの最上部に配置 (ver2構造)
-with col1_top:
-    st.header('ナレーション原稿形式に変換します')
-with col2_top:
-    st.header('コピーしてお使いください')
-
-
-# テキストエリアの定義と結果の表示を同じブロックで行う
-col1_main, col2_main = st.columns(2)
-
-# st.text_areaの戻り値をここで定義
-input_text = ""
-
-with col1_main:
-    # input_textの定義
+with col1:
+    st.header('')
+    
     input_text = st.text_area(
-        "　", 
+        "ナレーション原稿形式に変換します", 
         height=500, 
         placeholder="""①キャプションをテキストで書き出した形式
 00;00;00;00 - 00;00;02;29
@@ -262,43 +232,39 @@ N ああああ
 """,
         help=help_text
     )
-
-# ----------------------------------------------------------------------------------
-# 2段目：コントロールエリア（3カラム構造）
-# ----------------------------------------------------------------------------------
-# 3つのカラムを定義：[N強制挿入] [MM:SSで出力] [空]
-# [2, 2, 1] の比率にして、チェックボックスが左側に詰まるように調整します
-col1_bottom_opt, col2_bottom_opt, col3_bottom_opt = st.columns([2, 2, 1]) 
-
-# ▼▼▼【ver5.3 変更点】チェックボックスの横並びを3カラムで実現 ▼▼▼
-with col1_bottom_opt:
-    n_force_insert = st.checkbox("N強制挿入", value=True)
-
-with col2_bottom_opt:
-    mm_ss_colon = st.checkbox("ｍｍ：ｓｓで出力", value=False)
     
-# col3_bottom_opt は空のまま（右側のテキストエリアの位置合わせを兼ねる）
-# ▲▲▲【ver5.3 変更点】ここまで ▼▼▼
+    # ▼▼▼【ver4.4 修正点】チェックボックスを左右に並べる ▼▼▼
+    col_checkbox_left, col_checkbox_right = st.columns(2)
+    
+    with col_checkbox_left:
+        n_force_insert = st.checkbox("N強制挿入", value=True)
+    
+    with col_checkbox_right:
+        mm_ss_colon = st.checkbox("ｍｍ：ｓｓで出力", value=False)
+        # ▲▲▲【ver4.4 修正点】ここまで ▼▼▼
 
 
-# ----------------------------------------------------------------------------------
-# 3. 変換結果の表示（メインロジック）
-# ----------------------------------------------------------------------------------
-if input_text:
-    try:
-        # 変換関数にフラグを渡す
-        converted_text = convert_narration_script(input_text, n_force_insert, mm_ss_colon)
-        
-        # output_text_area を col2_main の中で呼び出す
-        with col2_main:
-             st.text_area("　コピーしてお使いください", value=converted_text, height=500)
-             
-    except Exception as e:
-        # エラー時
-        with col2_main:
-            st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
-            st.text_area("　コピーしてお使いください", value="", height=500, disabled=True)
+with col2:
+    st.header('')
+    
+    if input_text:
+        try:
+            # ▼▼▼【ver4.4 修正点】変換関数にフラグを渡す ▼▼▼
+            converted_text = convert_narration_script(input_text, n_force_insert, mm_ss_colon)
             
+            st.text_area("　コピーしてお使いください", value=converted_text, height=500)
+            
+            # 左カラムのチェックボックス（2つ分）の高さに合わせる
+            st.markdown('<div style="height: 76px;"></div>', unsafe_allow_html=True) 
+
+        except Exception as e:
+            st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
+            st.markdown('<div style="height: 538px;"></div>', unsafe_allow_html=True) 
+    else:
+        # 入力がない場合、右側を完全に空にするが、高さは維持
+        st.markdown('<div style="height: 538px;"></div>', unsafe_allow_html=True) 
+
+
 # --- フッターをカスタマイズ ---
 st.markdown("---")
 st.markdown(
