@@ -218,7 +218,7 @@ with col1:
     st.header('')
     
     input_text = st.text_area(
-        "ナレーション原稿形式に変換します", 
+        "ここに元原稿をペースト", 
         height=500, 
         placeholder="""①キャプションをテキストで書き出した形式
 00;00;00;00 - 00;00;02;29
