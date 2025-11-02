@@ -3,10 +3,10 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver5.0：ロジック変更なし）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver5.1：ロジック変更なし）▼▼▼
 # ===============================================================
 def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=False):
-    # （中略：ロジックはver4.4と同一。機能は実装済み）
+    # （中略：ロジックはver4.4と同一）
     FRAME_RATE = 30.0
     CONNECTION_THRESHOLD = 1.0 + (10.0 / FRAME_RATE)
 
@@ -185,12 +185,11 @@ def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=Fa
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - （ver5.0：3カラム構造による最終安定版）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - （ver5.1：インデント修正版）▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
-# ▼▼▼【ver5.0 変更点】CSSを再定義（文字サイズのみ維持） ▼▼▼
 st.markdown("""<style> 
 textarea::placeholder { 
     font-size: 13px;
@@ -199,17 +198,6 @@ textarea {
     font-size: 14px !important;
 }
 </style>""", unsafe_allow_html=True)
-
-# ヘルプテキストを定義（変更なし）
-help_text = """
-【機能詳細】  
-・ENDタイム(秒のみ)が自動で入ります  
-　分をまたぐ時は(分秒)、次のナレーションと繋がる時は割愛されます  
-・頭の「N」は自動で全角に変換され未記載の時は自動挿入されます  
-　VOや実況などN以外はそのまま適応されます  
-・Hをまたぐときは自動で仕切りが入ります  
-・ナレーション本文の半角英数字は全て全角に変換します  
-"""
 
 # ----------------------------------------------------------------------------------
 # 1段目：メインのテキストエリアとタイトル
@@ -225,6 +213,9 @@ with col2_top:
 
 # テキストエリアの定義と結果の表示を同じブロックで行う
 col1_main, col2_main = st.columns(2)
+
+# st.text_areaの戻り値をここで定義
+input_text = ""
 
 with col1_main:
     # input_textの定義
@@ -246,17 +237,13 @@ N ああああ
         help=help_text
     )
 
-with col2_main:
-    # 出力エリアは、入力がある場合のみ、下のロジックでst.text_areaを呼ぶ
-
-
 # ----------------------------------------------------------------------------------
 # 2段目：コントロールエリア（3カラム構造）
 # ----------------------------------------------------------------------------------
-# 3つのカラムを定義：[N強制挿入] [MM:SSで出力] [空]
+# ▼▼▼【ver5.1 修正点】インデントを修正し、メインコンテナ直下で3カラムを定義 ▼▼▼
 col1_bottom_opt, col2_bottom_opt, col3_bottom_opt = st.columns([1, 1, 1]) # 3分割
 
-# ▼▼▼【ver5.0 変更点】チェックボックスを左右に並べる ▼▼▼
+# ▼▼▼【ver5.1 修正点】チェックボックスの横並びを3カラムで実現 ▼▼▼
 with col1_bottom_opt:
     n_force_insert = st.checkbox("N強制挿入", value=True)
 
@@ -264,6 +251,7 @@ with col2_bottom_opt:
     mm_ss_colon = st.checkbox("ｍｍ：ｓｓで出力", value=False)
     
 # col3_bottom_opt は空のまま（右側のテキストエリアの位置合わせを兼ねる）
+# ▲▲▲【ver5.1 修正点】ここまで ▼▼▼
 
 
 # ----------------------------------------------------------------------------------
