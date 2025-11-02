@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver4.1：MM:SSと「半」の共存修正）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver4.2：MM:SSと「半」の排他的共存修正）▼▼▼
 # ===============================================================
 def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=False):
     # （中略：時間ロジック、Hマーカーロジックは変更なし）
@@ -92,6 +92,7 @@ def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=Fa
         spacer = ""
         
         is_half_time = False # 「半」判定フラグ
+        base_time_str = "" # MMSSの数字部分を格納する変数
         
         # 1. MMSS の基本形とspacerを決定
         if 0 <= start_fr <= 9:
@@ -109,18 +110,18 @@ def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=Fa
             base_time_str = f"{display_mm:02d}{display_ss:02d}"
             spacer = "　　　"
 
-        # 2. 最終的なformatted_start_timeを決定
+        # ▼▼▼【ver4.2 修正点】最終的なformatted_start_timeの決定ロジックを統合 ▼▼▼
         if is_half_time:
-            # 「半」が入る場合は、コロンフラグを無視して MMSS半 形式を維持
+            # 「半」が入る場合
             formatted_start_time = f"{base_time_str.translate(to_zenkaku_num)}半"
         elif mm_ss_colon_flag:
-            # コロンフラグがONの場合、MM:SS 形式にする
+            # コロンフラグがON（かつ「半」でない）場合
             mm_part = base_time_str[:2]; ss_part = base_time_str[2:]
             formatted_start_time = f"{mm_part}：{ss_part}".translate(to_zenkaku_num)
         else:
-            # コロンフラグがOFFの場合、MMSS 形式にする
+            # コロンフラグがOFF（かつ「半」でない）場合
             formatted_start_time = base_time_str.translate(to_zenkaku_num)
-        # ▲▲▲【ver4.1 修正点】ここまで ▼▼▼
+        # ▲▲▲【ver4.2 修正点】ここまで ▼▼▼
 
 
         speaker_symbol = 'Ｎ'
@@ -183,7 +184,7 @@ def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=Fa
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - （ver4.1：MM:SS出力オプション）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - （ver4.2：MM:SS出力オプション）▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
@@ -233,7 +234,7 @@ N ああああ
         help=help_text
     )
     
-    # ▼▼▼【ver4.1 変更点】チェックボックスを左右に並べる ▼▼▼
+    # ▼▼▼【ver4.2 変更点】チェックボックスを左右に並べる ▼▼▼
     col_checkbox_left, col_checkbox_right = st.columns(2)
     
     # N強制挿入はそのまま
@@ -243,7 +244,7 @@ N ああああ
     # MM:SS出力オプションを追加
     with col_checkbox_right:
         mm_ss_colon = st.checkbox("ｍｍ：ｓｓで出力", value=False)
-        # ▲▲▲【ver4.1 変更点】ここまで ▼▼▼
+        # ▲▲▲【ver4.2 変更点】ここまで ▼▼▼
 
 
 # ----------------------------------------------------------------------------------
@@ -254,7 +255,7 @@ with col2:
     
     if input_text:
         try:
-            # ▼▼▼【ver4.1 変更点】変換関数にフラグを渡す ▼▼▼
+            # ▼▼▼【ver4.2 変更点】変換関数にフラグを渡す ▼▼▼
             converted_text = convert_narration_script(input_text, n_force_insert, mm_ss_colon)
             
             st.text_area("　コピーしてお使いください", value=converted_text, height=500)
