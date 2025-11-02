@@ -135,12 +135,12 @@ with col1:
     with label_col:
         st.write("ナレーション原稿形式に変換します") # text_areaのラベルの代わり
     with checkbox_col:
-        force_n_insertion = st.checkbox("N強制挿入", value=True, help="話者名がない行に、自動で「Ｎ」を補います。")
+        force_n_insertion = st.checkbox("N強制挿入", value=True, help="ナレーション本文前に自動で「Ｎ」を補います。")
     
     # お客様のVer.1のtext_areaを、labelを非表示にして再現
     input_text = st.text_area(
         "ナレーション原稿形式に変換します", # このラベルは表示されない
-        height=500, 
+        height=200, 
         placeholder="""キャプションをテキストで書き出した形式
 00;00;00;00 - 00;00;02;29
 N ああああ
