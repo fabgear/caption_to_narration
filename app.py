@@ -8,7 +8,7 @@ import math
 def convert_narration_script(text):
     # --- 変換テーブルの準備 ---
     to_zenkaku_num = str.maketrans('0123456789', '０１２３４５６７８９')
-    hankaku_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '
+    hankaku_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234GHIJKLMNOPQRSTUVWXYZ0123456789 '
     zenkaku_chars = 'ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９　'
     to_zenkaku_all = str.maketrans(hankaku_chars, zenkaku_chars)
     to_hankaku_time = str.maketrans('０１２３４５６７８９：〜', '0123456789:~')
@@ -32,8 +32,10 @@ def convert_narration_script(text):
 
     blocks = []
     for i in range(0, len(relevant_lines), 2):
-        if i + 1 < len(relevant_lines):
-            blocks.append({'time': relevant_lines[i].strip(), 'text': relevant_lines[i+1].strip()})
+        # ペアが足りない場合も考慮
+        time_val = relevant_lines[i].strip()
+        text_val = relevant_lines[i+1].strip() if i + 1 < len(relevant_lines) else ""
+        blocks.append({'time': time_val, 'text': text_val})
 
     output_lines = []
     for i, block in enumerate(blocks):
@@ -76,15 +78,17 @@ def convert_narration_script(text):
         
         end_string = ""; add_blank_line = True
         if i + 1 < len(blocks):
-            next_normalized_time = blocks[i+1]['time'].translate(to_hankaku_time).replace('~', '-')
-            next_time_match = re.match(time_pattern, next_normalized_time)
-            if next_time_match:
-                next_groups = next_time_match.groups()
-                next_start_hh, next_start_mm, next_start_ss, next_start_dec, _, _, _, _ = [int(g or 0) for g in next_groups]
-                end_total_seconds = (end_hh * 3600) + (end_mm * 60) + end_ss + (end_dec / 100.0)
-                next_start_total_seconds = (next_start_hh * 3600) + (next_start_mm * 60) + next_start_ss + (next_start_dec / 100.0)
-                if next_start_total_seconds - end_total_seconds < 1.0:
-                    add_blank_line = False
+            next_time_str = blocks[i+1]['time']
+            if next_time_str:
+                next_normalized_time = next_time_str.translate(to_hankaku_time).replace('~', '-')
+                next_time_match = re.match(time_pattern, next_normalized_time)
+                if next_time_match:
+                    next_groups = next_time_match.groups()
+                    next_start_hh, next_start_mm, next_start_ss, next_start_dec, _, _, _, _ = [int(g or 0) for g in next_groups]
+                    end_total_seconds = (end_hh * 3600) + (end_mm * 60) + end_ss + (end_dec / 100.0)
+                    next_start_total_seconds = (next_start_hh * 3600) + (next_start_mm * 60) + next_start_ss + (next_start_dec / 100.0)
+                    if next_start_total_seconds - end_total_seconds < 1.0:
+                        add_blank_line = False
 
         if add_blank_line:
             if start_hh != end_hh: formatted_end_time = f"{end_hh:02d}{end_mm:02d}{end_ss:02d}".translate(to_zenkaku_num)
@@ -99,7 +103,7 @@ def convert_narration_script(text):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分（説明文を最終化）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分（変更なし）▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
