@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （変更なし）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver1.1）▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     to_zenkaku_num = str.maketrans('0123456789', '０１２３４５６７８９')
@@ -42,6 +42,8 @@ def convert_narration_script(text):
         i += 1
 
     output_lines = []
+    previous_hh = -1 # ▼▼▼【ver1.1 変更点】直前の時間(HH)を保持する変数を追加 ▼▼▼
+
     for i, block in enumerate(blocks):
         normalized_time_str = block['time'].translate(to_hankaku_time).replace('~', '-')
         time_match = re.match(time_pattern, normalized_time_str)
@@ -50,6 +52,18 @@ def convert_narration_script(text):
         groups = time_match.groups()
         start_hh, start_mm, start_ss, start_dec, end_hh, end_mm, end_ss, end_dec = [int(g or 0) for g in groups]
 
+        # ▼▼▼【ver1.1 変更点】時の繰り上がりをチェックし、マーカーを挿入 ▼▼▼
+        if previous_hh == -1: # ループの初回に、最初の時間をセット
+            previous_hh = start_hh
+        
+        if start_hh > previous_hh:
+            output_lines.append("") # マーカーの前に空行
+            output_lines.append(f"＜{str(start_hh).translate(to_zenkaku_num)}Ｈ＞")
+            output_lines.append("") # マーカーの後に空行
+        
+        previous_hh = start_hh # 現在の時間を次のループのために保存
+        # ▲▲▲【ver1.1 変更点】ここまで ▲▲▲
+
         start_total_seconds = start_ss + start_dec / 100.0
         rounded_sec = round(start_total_seconds)
         if rounded_sec >= 60:
@@ -57,8 +71,8 @@ def convert_narration_script(text):
             if start_mm >= 60:
                 start_hh += 1; start_mm = 0
         
-        if start_hh > 0: formatted_start_time = f"{start_hh:02d}{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
-        else: formatted_start_time = f"{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
+        # ▼▼▼【ver1.1 変更点】開始時間の表記を、常にMMSS形式に統一 ▼▼▼
+        formatted_start_time = f"{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
 
         speaker_symbol = 'Ｎ'
         text_content = block['text']
@@ -91,10 +105,12 @@ def convert_narration_script(text):
                     if next_start_total_seconds - end_total_seconds < 1.0:
                         add_blank_line = False
 
+        # ▼▼▼【ver1.1 変更点】終了時間の表記から、時(HH)の比較を削除 ▼▼▼
         if add_blank_line:
-            if start_hh != end_hh: formatted_end_time = f"{end_hh:02d}{end_mm:02d}{end_ss:02d}".translate(to_zenkaku_num)
-            elif start_mm != end_mm: formatted_end_time = f"{end_mm:02d}{end_ss:02d}".translate(to_zenkaku_num)
-            else: formatted_end_time = f"{end_ss:02d}".translate(to_zenkaku_num)
+            if start_mm != end_mm: # 分が繰り上がった場合
+                formatted_end_time = f"{end_mm:02d}{end_ss:02d}".translate(to_zenkaku_num)
+            else: # 分が同じ場合
+                formatted_end_time = f"{end_ss:02d}".translate(to_zenkaku_num)
             end_string = f"　（～{formatted_end_time}）"
             
         output_lines.append(f"{formatted_start_time}　　{speaker_symbol}　{body}{end_string}")
@@ -104,7 +120,7 @@ def convert_narration_script(text):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - 【tooltipのバグ修正版】▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - （変更なし）▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
@@ -112,7 +128,7 @@ st.title('Caption to Narration')
 st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
 col1, col2 = st.columns(2)
 
-# --- ▼▼▼【変更点】ここでポップアップで表示したいヘルプテキストを先に定義します ▼▼▼ ---
+# --- ▼▼▼ あなたが書いたヘルプテキスト（変更なし） ▼▼▼ ---
 help_text = """
 【機能詳細】  
 ・ENDタイム(秒のみ)が自動で入ります  
@@ -125,7 +141,7 @@ help_text = """
 with col1:
     st.header('')
     
-    # --- ▼▼▼【変更点】`st.text_area`に、`help`引数を追加します ▼▼▼ ---
+    # --- ▼▼▼ あなたが書いた入力欄の定義（変更なし） ▼▼▼ ---
     input_text = st.text_area(
         "ナレーション原稿形式に変換します", 
         height=500, 
@@ -141,7 +157,7 @@ N ああああ
 ※混在も可能です
 
 """,
-        help=help_text # ここに追加！
+        help=help_text
     )
 
 with col2:
