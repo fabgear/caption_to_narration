@@ -220,7 +220,7 @@ with col2:
         try:
             converted_text = convert_narration_script(input_text, n_force_insert)
             
-            st.text_area("コピーしてお使いください", value=converted_text, height=500)
+            st.text_area("　コピーしてお使いください", value=converted_text, height=500)
             
             st.markdown('<div style="height: 38px;"></div>', unsafe_allow_html=True)
             
