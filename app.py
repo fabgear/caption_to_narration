@@ -134,7 +134,7 @@ with col1:
     # 空の列とチェックボックスの列を作り、右側に寄せる
     _, checkbox_col = st.columns([0.75, 0.25])
     with checkbox_col:
-        force_n_insertion = st.checkbox("N強制挿入", value=True, help="話者名がない行に、自動で「Ｎ」を補います。")
+        force_n_insertion = st.checkbox("N強制挿入", value=True")
 
     # お客様のVer.1のtext_areaを、一切変更せずにそのまま使用します
     input_text = st.text_area(
