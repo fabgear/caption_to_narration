@@ -3,11 +3,11 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver4.0：ロジック変更なし）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver4.1：ロジック変更なし）▼▼▼
 # ===============================================================
 # N_FORCE_INSERT_FLAG を受け取るように変更
 def convert_narration_script(text, n_force_insert_flag=True):
-    # (中略: ver3と同一のロジックを維持)
+    # （ロジックはver3.3と同一。機能は実装済み）
     FRAME_RATE = 30.0
     CONNECTION_THRESHOLD = 1.0 + (10.0 / FRAME_RATE)
 
@@ -162,20 +162,48 @@ def convert_narration_script(text, n_force_insert_flag=True):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - （ver4.0：コピーボタン追加）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - （ver4.1：コピーボタン最終版）▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
-# ▼▼▼【ver4.0 変更点】文字サイズCSSを反映 ▼▼▼
-st.markdown("""<style> 
-textarea::placeholder { 
-    font-size: 13px; /* プレースホルダーのサイズ */
-} 
-textarea {
-    font-size: 14px !important; /* ★入力・出力テキスト全体のサイズを14pxに指定 */
+# ▼▼▼【ver4.1 変更点】CSSでst.codeの見た目をtext_areaに近づける ▼▼▼
+STYLING_CSS = """
+<style> 
+textarea::placeholder { font-size: 13px; } 
+textarea { font-size: 14px !important; }
+
+/* st.code（出力エリア）の見た目を調整 */
+/* -------------------------------------- */
+/* st.code の周りの枠を消す */
+.stCodeBlock {
+    border: 1px solid rgba(250, 250, 250, 0) !important; /* ほぼ透明 */
+    background-color: transparent !important; /* 背景色を透明に */
+    padding: 1rem !important; /* 内部のパディングを調整 */
+    height: 500px; /* 高さをtext_areaと同じ500pxに固定 */
+    overflow: auto; /* スクロール可能に */
 }
-</style>""", unsafe_allow_html=True)
+
+/* codeタグ自体の文字サイズを調整 */
+.stCodeBlock > code {
+    white-space: pre-wrap !important; /* 折り返しを有効にする */
+    font-size: 14px !important; /* 文字サイズをテキストエリアと合わせる */
+    background-color: transparent !important; /* 背景色を透明に */
+    color: inherit; /* 文字色を親要素から継承 */
+}
+
+/* st.code のコピーボタンだけを右上に配置 */
+.stCodeBlock > button {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    z-index: 10;
+}
+/* -------------------------------------- */
+
+</style>
+"""
+st.markdown(STYLING_CSS, unsafe_allow_html=True)
 
 col1, col2 = st.columns(2)
 
@@ -220,42 +248,31 @@ N ああああ
 # 2. 右カラム（出力）
 # ----------------------------------------------------------------------------------
 with col2:
-    st.header('')
+    # ▼▼▼【ver4.1 変更点】st.codeの見た目に合わせたヘッダー配置 ▼▼▼
+    st.header('コピーしてお使いください')
     
     if input_text:
         try:
-            # 変換結果を取得
             converted_text = convert_narration_script(input_text, n_force_insert)
             
-            # ▼▼▼【ver4.0 変更点】ヘッダーとボタンを同じ行に配置 ▼▼▼
-            col_title, col_button = st.columns([0.7, 0.3]) # タイトルとボタンの幅を調整
-
-            with col_title:
-                st.markdown('### コピーしてお使いください') # headerより小さいMarkdownで余白を調整
+            # ▼▼▼【ver4.1 変更点】st.text_areaを st.code に変更し、コピーボタンを統合 ▼▼▼
+            st.code(
+                converted_text, 
+                language="markdown", # シンタックスハイライトを無効化
+                line_numbers=False,
+                show_copy_button=True # 本物のコピーボタン！
+            )
             
-            with col_button:
-                # ユーザーにクリップボードにコピーさせるためのボタン
-                # コピー機能自体はPythonでは実行できず、ユーザー操作に依存
-                if st.button("クリップボードにコピー", key="copy_btn", type="primary"):
-                    st.toast("テキストがコピーされました！(Ctrl+Cも可能です)")
-                    # **注意**: Streamlitの制限により、このボタン単体でクリップボードに書き込むことはできません。
-                    # ユーザーは st.text_area の内容を手動でコピーする必要があります。
-                    # このボタンは操作を促す目的での配置となります。
-                    
-            # 出力テキストエリア（左と同じ500pxに固定）
-            st.text_area("　", value=converted_text, height=500)
-            
-            # 左のチェックボックスの高さ分、右のボタンとテキストエリアが占める高さを合計し、
-            # フッターとの距離を揃えるための隠し要素を配置 (今回はボタンの高さ分を調整)
-            # ボタンがヘッダーとテキストエリアの間に入ったため、高さ調整のロジックを削除
-            pass 
+            # 左のチェックボックスの高さ分、下の余白を確保し、フッターとの距離を揃える
+            st.markdown('<div style="height: 38px;"></div>', unsafe_allow_html=True)
             
         except Exception as e:
+            # エラー時も高さを揃えるための隠し要素を配置
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
-            # エラー時は高さ調整なし
+            st.markdown('<div style="height: 38px;"></div>', unsafe_allow_html=True)
     else:
-        # 入力がない場合、右側を完全に空にする（ver3.0の安定構造）
-        pass
+        # 入力がない場合、右側を完全に空にするが、高さは維持
+        st.markdown('<div style="height: 538px;"></div>', unsafe_allow_html=True) 
 
 
 # --- フッターをカスタマイズ ---
