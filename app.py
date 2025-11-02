@@ -3,12 +3,12 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver1.2）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver1.3）▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 設定値 ---
-    FRAME_RATE = 30.0 # タイムコードのフレームレートを30と仮定
-    CONNECTION_THRESHOLD = 1.0 + (10.0 / FRAME_RATE) # つながりと判断する閾値（1秒10F）
+    FRAME_RATE = 30.0
+    CONNECTION_THRESHOLD = 1.0 + (10.0 / FRAME_RATE)
 
     to_zenkaku_num = str.maketrans('0123456789', '０１２３４５６７８９')
     hankaku_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '
@@ -20,7 +20,6 @@ def convert_narration_script(text):
     start_index = -1
     time_pattern = r'(\d{2})[:;](\d{2})[:;](\d{2})[;.](\d{2})\s*-\s*(\d{2})[:;](\d{2})[:;](\d{2})[;.](\d{2})'
     
-    # タイムコードが始まる行を探す
     for i, line in enumerate(lines):
         line_with_frames = re.sub(r'(\d{2}:\d{2}:\d{2})(?![:.]\d{2})', r'\1.00', line)
         normalized_line = line_with_frames.strip().translate(to_hankaku_time).replace('~', '-')
@@ -68,22 +67,35 @@ def convert_narration_script(text):
             output_lines.append("")
         previous_hh = start_hh
 
-        start_total_seconds_val = start_ss + start_fr / FRAME_RATE
-        rounded_sec = round(start_total_seconds_val)
-        
-        calc_mm, calc_hh = start_mm, start_hh
-        if rounded_sec >= 60:
-            rounded_sec = 0
-            calc_mm += 1
-            if calc_mm >= 60:
-                calc_mm = 0
-                calc_hh += 1
-        
-        formatted_start_time = f"{calc_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
+        # ▼▼▼【ver1.3 変更点】開始時間のフォーマットとスペーサーをフレーム数に応じて変更 ▼▼▼
+        spacer = ""
+        if 0 <= start_fr <= 9:
+            # 0-9F: MMSS表記、スペース3つ
+            formatted_start_time = f"{start_mm:02d}{start_ss:02d}".translate(to_zenkaku_num)
+            spacer = "　　　"
+        elif 10 <= start_fr <= 22:
+            # 10-22F: MMSS半 表記、スペース2つ
+            time_num_part = f"{start_mm:02d}{start_ss:02d}".translate(to_zenkaku_num)
+            formatted_start_time = f"{time_num_part}半"
+            spacer = "　　"
+        else: # 23F以降
+            # 23F-: 秒を繰り上げたMMSS表記、スペース3つ
+            display_ss = start_ss + 1
+            display_mm = start_mm
+            
+            if display_ss >= 60:
+                display_ss = 0
+                display_mm += 1
+                # （分が繰り上がっても時はこの時点では変えない）
+            
+            formatted_start_time = f"{display_mm:02d}{display_ss:02d}".translate(to_zenkaku_num)
+            spacer = "　　　"
+        # ▲▲▲【ver1.3 変更点】ここまで ▲▲▲
 
         speaker_symbol = 'Ｎ'
         text_content = block['text']
         body = ""
+        # （話者と本文の処理は変更なし）
         match = re.match(r'^(\S+)\s+(.*)', text_content)
         if match:
             raw_speaker = match.group(1); body = match.group(2).strip()
@@ -99,34 +111,34 @@ def convert_narration_script(text):
         
         end_string = ""; add_blank_line = True
         if i + 1 < len(blocks):
+            # （つながり判定のロジックは変更なし）
             next_block_time_with_frames = re.sub(r'(\d{2}:\d{2}:\d{2})(?![:.]\d{2})', r'\1.00', blocks[i+1]['time'])
             next_normalized_time = next_block_time_with_frames.translate(to_hankaku_time).replace('~', '-')
             if re.match(time_pattern, next_normalized_time):
                 next_groups = re.match(time_pattern, next_normalized_time).groups()
                 next_start_hh, next_start_mm, next_start_ss, next_start_fr, _, _, _, _ = [int(g or 0) for g in next_groups]
-                
                 end_total_seconds = (end_hh * 3600) + (end_mm * 60) + end_ss + (end_fr / FRAME_RATE)
                 next_start_total_seconds = (next_start_hh * 3600) + (next_start_mm * 60) + next_start_ss + (next_start_fr / FRAME_RATE)
-                
                 if next_start_total_seconds - end_total_seconds < CONNECTION_THRESHOLD:
                     add_blank_line = False
 
         if add_blank_line:
+            # （終了時間判定のロジックは変更なし）
             total_frames = (end_hh * 3600 * int(FRAME_RATE)) + (end_mm * 60 * int(FRAME_RATE)) + (end_ss * int(FRAME_RATE)) + end_fr
             adjusted_total_seconds = math.floor((total_frames - 15) / FRAME_RATE)
-
             if adjusted_total_seconds >= 0:
                 adj_hh = int(adjusted_total_seconds // 3600)
                 adj_mm = int((adjusted_total_seconds % 3600) // 60)
                 adj_ss = int(adjusted_total_seconds % 60)
-                
                 if start_mm != adj_mm:
                     formatted_end_time = f"{adj_mm:02d}{adj_ss:02d}".translate(to_zenkaku_num)
                 else:
                     formatted_end_time = f"{adj_ss:02d}".translate(to_zenkaku_num)
                 end_string = f"　（～{formatted_end_time}）"
             
-        output_lines.append(f"{formatted_start_time}　　{speaker_symbol}　{body}{end_string}")
+        # ▼▼▼【ver1.3 変更点】出力行の組み立てに可変スペーサーを使用 ▼▼▼
+        output_lines.append(f"{formatted_start_time}{spacer}{speaker_symbol}　{body}{end_string}")
+        
         if add_blank_line and i < len(blocks) - 1:
             output_lines.append("")
             
