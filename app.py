@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver1.4）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver1.5：バグ修正）▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 設定値 ---
@@ -43,7 +43,7 @@ def convert_narration_script(text):
             if i + 1 < len(relevant_lines):
                 next_line = relevant_lines[i+1].strip()
                 next_normalized_line = re.sub(r'(\d{2}:\d{2}:\d{2})(?![:.]\d{2})', r'\1.00', next_line).translate(to_hankaku_time).replace('~', '-')
-                if not re.match(time_pattern, next_normalized_time):
+                if not re.match(time_pattern, next_normalized_line):
                     text_val = next_line; i += 1
             blocks.append({'time': time_val, 'text': text_val})
         i += 1
@@ -102,40 +102,40 @@ def convert_narration_script(text):
         body = body.translate(to_zenkaku_all)
         
         end_string = ""; add_blank_line = True
+        
         if i + 1 < len(blocks):
-            # （つながり判定はver1.2/1.3のロジックを維持）
-            next_block_time_with_frames = re.sub(r'(\d{2}:\d{2}:\d{2})(?![:.]\d{2})', r'\1.00', blocks[i+1]['time'])
+            # ▼▼▼【ver1.5 修正点】ここで次のブロックの情報を取得し、次のブロックが有効なタイムコードを持つかチェック ▼▼▼
+            next_block_time_str = blocks[i+1]['time']
+            next_block_time_with_frames = re.sub(r'(\d{2}:\d{2}:\d{2})(?![:.]\d{2})', r'\1.00', next_block_time_str)
             next_normalized_time = next_block_time_with_frames.translate(to_hankaku_time).replace('~', '-')
-            if re.match(time_pattern, next_normalized_time):
+            
+            # **if文の外で定義したので、次の行で参照できるようになる**
+            if re.match(time_pattern, next_normalized_time): 
+                # （つながり判定のロジックはver1.2/1.3を維持）
                 next_groups = re.match(time_pattern, next_normalized_time).groups()
                 next_start_hh, next_start_mm, next_start_ss, next_start_fr, _, _, _, _ = [int(g or 0) for g in next_groups]
                 end_total_seconds = (end_hh * 3600) + (end_mm * 60) + end_ss + (end_fr / FRAME_RATE)
                 next_start_total_seconds = (next_start_hh * 3600) + (next_start_mm * 60) + next_start_ss + (next_start_fr / FRAME_RATE)
                 if next_start_total_seconds - end_total_seconds < CONNECTION_THRESHOLD:
                     add_blank_line = False
+            # ▼▼▼【ver1.5 修正点】ここまで ▼▼▼
 
         if add_blank_line:
-            # ▼▼▼【ver1.4 変更点】終了時間の丸めロジックを更新 ▼▼▼
+            # 終了時間の丸めロジック（ver1.4のロジックを維持）
+            adj_ss = end_ss
+            adj_mm = end_mm
+
             if 0 <= end_fr <= 9:
-                # 0-9F: 秒を1つ減らす
                 adj_ss = end_ss - 1
-                adj_mm = end_mm
                 if adj_ss < 0:
                     adj_ss = 59
                     adj_mm -= 1
-                    # 時の繰り下がりはナレーション原稿では通常発生しないため考慮外
-            else: # 10-29F
-                # 10-29F: 秒をそのまま使う
-                adj_ss = end_ss
-                adj_mm = end_mm
             
-            # 元の開始時間と比較して表示形式を決める
             if start_mm != adj_mm:
                 formatted_end_time = f"{adj_mm:02d}{adj_ss:02d}".translate(to_zenkaku_num)
             else:
                 formatted_end_time = f"{adj_ss:02d}".translate(to_zenkaku_num)
                 
-            # ▼▼▼【ver1.4 変更点】半角括弧に変更 ▼▼▼
             end_string = f" (~{formatted_end_time})"
             
         output_lines.append(f"{formatted_start_time}{spacer}{speaker_symbol}　{body}{end_string}")
