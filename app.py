@@ -109,7 +109,7 @@ def convert_narration_script(text, force_n_insertion):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - 【お客様の新しいレイアウト案をシンプルに実現】▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - 【UIバグ修正・最終完成版】▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
@@ -123,17 +123,13 @@ help_text = """
 ・ENDタイム(秒のみ)が自動で入ります  
 　分をまたぐ時は(分秒)、次のナレーションと繋がる時は割愛されます  
 ・頭の「N」は自動で全角に変換され未記載の時は自動挿入されます  
-　VOや実況などN以外はそのまま適応されます  
+　VOや実況などN以外はそのまま適応されます  ※左下の✔で選択可能
 ・ナレーション本文の半角英数字は全て全角に変換します  
+
 """
 
 with col1:
-    st.header('')
-    
-    # --- ▼▼▼【変更点】ここからが、お客様の新しいレイアウト案をシンプルに実現するコードです ▼▼▼ ---
-    
-    # 1. お客様のVer.1のtext_areaを、一切変更せずにそのまま配置します
-    #    これが「タイトル＋？マーク」と「テキストボックス」の両方の役割を果たします
+    # お客様の理想のレイアウトを、最もシンプルなコードで実現
     input_text = st.text_area(
         "ナレーション原稿形式に変換します", 
         height=500, 
@@ -151,18 +147,22 @@ N ああああ
 """,
         help=help_text
     )
-
-    # 2. テキストボックスの下に、チェックボックスを配置します
     force_n_insertion = st.checkbox("N強制挿入", value=True)
 
-
 with col2:
-    st.header('')
+    # --- ▼▼▼【変更点】右側のタイトルを復活させ、高さを揃えます ▼▼▼ ---
+    st.write("コピーしてお使いください") # st.header('') から変更
+    
     if input_text:
         try:
-            # --- ▼▼▼【変更点】チェックボックスの状態を関数に渡します ▼▼▼ ---
             converted_text = convert_narration_script(input_text, force_n_insertion)
-            st.text_area("コピーしてお使いください", value=converted_text, height=500, label_visibility="collapsed")
+            # --- ▼▼▼【変更点】`label_visibility`を削除し、タイトルを表示させます ▼▼▼ ---
+            st.text_area(
+                "コピーしてお使いください", # このラベルは表示されませんが、高さを揃えるために重要
+                value=converted_text, 
+                height=500,
+                label_visibility="collapsed"
+            )
         except Exception as e:
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
 
