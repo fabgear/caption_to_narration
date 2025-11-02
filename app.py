@@ -103,7 +103,7 @@ with col1:
     input_text = st.text_area(
         """Premiereからキャプションを
         テキストで書き出して中身をペースト Ctrl+Enter ！""", 
-        height=500, 
+    #    height=500, 
         placeholder="""00;00;00;00 - 00;00;02;29
 N ああああ
 
