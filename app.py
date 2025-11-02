@@ -3,9 +3,8 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver4.0：MM:SS出力ロジック追加）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver4.1：MM:SSと「半」の共存修正）▼▼▼
 # ===============================================================
-# ▼▼▼【ver4.0 変更点】mm_ss_colon_flag を受け取るように変更 ▼▼▼
 def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=False):
     # （中略：時間ロジック、Hマーカーロジックは変更なし）
     FRAME_RATE = 30.0
@@ -92,7 +91,9 @@ def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=Fa
         total_seconds_in_minute_loop = (start_mm % 60) * 60 + start_ss
         spacer = ""
         
-        # 開始時間の MMSS を計算
+        is_half_time = False # 「半」判定フラグ
+        
+        # 1. MMSS の基本形とspacerを決定
         if 0 <= start_fr <= 9:
             display_mm = (total_seconds_in_minute_loop // 60) % 60; display_ss = total_seconds_in_minute_loop % 60
             base_time_str = f"{display_mm:02d}{display_ss:02d}"
@@ -100,17 +101,18 @@ def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=Fa
         elif 10 <= start_fr <= 22:
             display_mm = (total_seconds_in_minute_loop // 60) % 60; display_ss = total_seconds_in_minute_loop % 60
             base_time_str = f"{display_mm:02d}{display_ss:02d}"
-            formatted_start_time = f"{base_time_str.translate(to_zenkaku_num)}半"; spacer = "　　"
+            spacer = "　　"
+            is_half_time = True # 半フラグON
         else:
             total_seconds_in_minute_loop += 1
             display_mm = (total_seconds_in_minute_loop // 60) % 60; display_ss = total_seconds_in_minute_loop % 60
             base_time_str = f"{display_mm:02d}{display_ss:02d}"
             spacer = "　　　"
 
-        # ▼▼▼【ver4.0 変更点】mm_ss_colon_flag に応じた時刻表記の整形 ▼▼▼
-        if 10 <= start_fr <= 22:
-            # 「半」が入る場合は、既に上でformatted_start_timeが定義されているためスキップ
-            pass
+        # 2. 最終的なformatted_start_timeを決定
+        if is_half_time:
+            # 「半」が入る場合は、コロンフラグを無視して MMSS半 形式を維持
+            formatted_start_time = f"{base_time_str.translate(to_zenkaku_num)}半"
         elif mm_ss_colon_flag:
             # コロンフラグがONの場合、MM:SS 形式にする
             mm_part = base_time_str[:2]; ss_part = base_time_str[2:]
@@ -118,7 +120,8 @@ def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=Fa
         else:
             # コロンフラグがOFFの場合、MMSS 形式にする
             formatted_start_time = base_time_str.translate(to_zenkaku_num)
-        # ▲▲▲【ver4.0 変更点】ここまで ▼▼▼
+        # ▲▲▲【ver4.1 修正点】ここまで ▼▼▼
+
 
         speaker_symbol = 'Ｎ'
         text_content = block['text']
@@ -180,7 +183,7 @@ def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=Fa
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - （ver4.0：MM:SS出力オプション）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - （ver4.1：MM:SS出力オプション）▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
@@ -230,16 +233,17 @@ N ああああ
         help=help_text
     )
     
-    # ▼▼▼【ver4.0 変更点】チェックボックスを左右に並べる ▼▼▼
+    # ▼▼▼【ver4.1 変更点】チェックボックスを左右に並べる ▼▼▼
     col_checkbox_left, col_checkbox_right = st.columns(2)
     
+    # N強制挿入はそのまま
     with col_checkbox_left:
         n_force_insert = st.checkbox("N強制挿入", value=True)
     
+    # MM:SS出力オプションを追加
     with col_checkbox_right:
-        # デフォルトは False
         mm_ss_colon = st.checkbox("ｍｍ：ｓｓで出力", value=False)
-        # ▲▲▲【ver4.0 変更点】ここまで ▼▼▼
+        # ▲▲▲【ver4.1 変更点】ここまで ▼▼▼
 
 
 # ----------------------------------------------------------------------------------
@@ -250,13 +254,13 @@ with col2:
     
     if input_text:
         try:
-            # ▼▼▼【ver4.0 変更点】変換関数にフラグを渡す ▼▼▼
+            # ▼▼▼【ver4.1 変更点】変換関数にフラグを渡す ▼▼▼
             converted_text = convert_narration_script(input_text, n_force_insert, mm_ss_colon)
             
             st.text_area("　コピーしてお使いください", value=converted_text, height=500)
             
-            # 左カラムのチェックボックス（2つ分）と余白の高さを確保
-            st.markdown('<div style="height: 76px;"></div>', unsafe_allow_html=True) # 2行分のチェックボックスの高さ
+            # 左カラムのチェックボックス（2つ分）の高さに合わせる
+            st.markdown('<div style="height: 76px;"></div>', unsafe_allow_html=True) 
 
         except Exception as e:
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
