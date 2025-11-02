@@ -3,18 +3,23 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- 【hh対応・最終プロ仕様版】▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- 【最終・完全版】▼▼▼
+# すべての機能（複数フォーマット対応, ヘッダー無視, hh対応, 無記載対応）を統合
 # ===============================================================
 def convert_narration_script(text):
     # --- 変換テーブルの準備 ---
+    # 数字（半角→全角）
     to_zenkaku_num = str.maketrans('0123456789', '０１２３４５６７８９')
+    # 英数字とスペース（半角→全角）
     hankaku_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '
     zenkaku_chars = 'ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９　'
     to_zenkaku_all = str.maketrans(hankaku_chars, zenkaku_chars)
+    # タイムコードに含まれる可能性のある全角記号を半角に変換
     to_hankaku_time = str.maketrans('０１２３４５６７８９：〜', '0123456789:~')
 
     lines = [line.strip() for line in text.strip().split('\n') if line.strip()]
     
+    # --- データ開始行を自動で探す ---
     start_index = -1
     time_pattern = r'(\d{2}):(\d{2}):(\d{2})(?:[.;](\d{2}))?\s*-\s*(\d{2}):(\d{2}):(\d{2})(?:[.;](\d{2}))?'
     
@@ -25,8 +30,9 @@ def convert_narration_script(text):
             break
             
     if start_index == -1:
-        return "エラー：変換可能なタイムコードが見つかりませんでした。"
+        return "エラー：変換可能なタイムコードが見つかりませんでした。テキストの形式を確認してください。"
         
+    # ヘッダーなどを無視し、データ部分だけのリストを作成
     relevant_lines = lines[start_index:]
 
     blocks = []
@@ -53,7 +59,6 @@ def convert_narration_script(text):
                 start_hh += 1
                 start_mm = 0
         
-        # --- ▼▼▼【変更点】hh（時）を考慮したフォーマットに変更 ▼▼▼ ---
         if start_hh > 0:
             formatted_start_time = f"{start_hh:02d}{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
         else:
@@ -62,20 +67,27 @@ def convert_narration_script(text):
         # 2. 話者記号と本文のフォーマット
         speaker_symbol = 'Ｎ'
         text_content = block['text'].strip()
-        match = re.match(r'^(\S+)\s+(.*)', text_content)
+        body = ""
 
-        if match:
-            raw_speaker = match.group(1)
-            body = match.group(2).strip()
-            if raw_speaker.upper() == 'N':
-                speaker_symbol = 'Ｎ'
-            else:
-                speaker_symbol = raw_speaker.translate(to_zenkaku_all)
+        if text_content == "無記載":
+            body = ""
         else:
-            if text_content.startswith('Ｎ '): body = text_content[2:].strip()
-            elif text_content.startswith('N '): body = text_content[2:].strip()
-            else: body = text_content
-        if not body: body = "※注意！本文なし！"
+            match = re.match(r'^(\S+)\s+(.*)', text_content)
+            if match:
+                raw_speaker = match.group(1)
+                body = match.group(2).strip()
+                if raw_speaker.upper() == 'N':
+                    speaker_symbol = 'Ｎ'
+                else:
+                    speaker_symbol = raw_speaker.translate(to_zenkaku_all)
+            else:
+                if text_content.startswith('Ｎ '): body = text_content[2:].strip()
+                elif text_content.startswith('N '): body = text_content[2:].strip()
+                else: body = text_content
+
+        if not body:
+            body = "※注意！本文なし！"
+        
         body = body.translate(to_zenkaku_all)
         
         # 3. 終了時間と空白行の処理
@@ -94,7 +106,6 @@ def convert_narration_script(text):
                     add_blank_line = False
 
         if add_blank_line:
-            # --- ▼▼▼【変更点】終了時間もhh（時）を考慮したフォーマットに変更 ▼▼▼ ---
             if start_hh != end_hh:
                 formatted_end_time = f"{end_hh:02d}{end_mm:02d}{end_ss:02d}".translate(to_zenkaku_num)
             elif start_mm != end_mm:
@@ -111,7 +122,7 @@ def convert_narration_script(text):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分（変更なし）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分（最終版）▼▼▼
 # ===============================================================
 st.set_page_config(
     page_title="Caption to Narration",
@@ -137,16 +148,23 @@ N ああああ
 
 または、
 ００：００：１５　〜　００：００：１８
-VO ああああ
+無記載
 
 上のどちらの形式でも、下のように変換されます。
 ------------------------------------------------
 ００００　　Ｎ　ああああ　（～０２）
 
-００１５　　ＶＯ　ああああ
+００１５　　Ｎ　※注意！本文なし！　（～１８）
 ------------------------------------------------
-【新機能】
+【話者名のルール】
+・行頭に「N」や「n」があれば「Ｎ」になります。
+・行頭に「VO」や「木村」などがあれば、それが話者名になります。
+・話者名がない場合は、自動で「Ｎ」が補われます。
+・「無記載」と書かれた行は、本文なしとして扱います。
+
+【その他の機能】
 ・先頭のシーケンス名や余分な改行は自動で無視します。
+・１時間を超えるタイムコード（hh:mm:ss）にも対応しています。
 """
     )
 
@@ -156,5 +174,5 @@ with col2:
         try:
             converted_text = convert_narration_script(input_text)
             st.text_area("コピーしてお使いください", value=converted_text, height=500)
-        except Exception:
-            st.error("エラーが発生しました。テキストの形式が正しいか確認してください。")
+        except Exception as e:
+            st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
