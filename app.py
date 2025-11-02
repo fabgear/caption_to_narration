@@ -92,7 +92,7 @@ def convert_narration_script(text):
         if should_insert_h_marker:
              output_lines.append("")
              # ▼▼▼【ver2.4 変更点】Hマーカーを【X H】形式に変更 ▼▼▼
-             output_lines.append(f"【{str(marker_hh_to_display).translate(to_zenkaku_num)}H】")
+             output_lines.append(f"【{str(marker_hh_to_display).translate(to_zenkaku_num)}Ｈ】")
              output_lines.append("")
              
         previous_end_hh = end_hh 
