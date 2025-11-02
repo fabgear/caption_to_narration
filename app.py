@@ -116,7 +116,7 @@ st.title('Caption to Narration')
 
 st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
 
-# お客様が完成させたVer.1のヘルプテキストをそのまま使用
+# お客様が完成させたVer.1のヘルプテキストを、一文字も変えずにそのまま使用
 help_text = """
 【機能詳細】  
 ・ENDタイム(秒のみ)が自動で入ります  
@@ -128,48 +128,50 @@ help_text = """
 
 # --- ▼▼▼【変更点】ここからが、お客様の理想のUIを実現するためのコードです ▼▼▼ ---
 
-# 1. まず、左右のテキスト入力欄だけを配置します
+# 1. まず、左側の入力欄だけを配置します
 col1, col2 = st.columns(2)
 
 with col1:
+    # お客様のVer.1のtext_areaを、一文字も変えずにそのまま使用
     input_text = st.text_area(
         "ナレーション原稿形式に変換します", 
         height=500, 
         placeholder="""キャプションをテキストで書き出した形式
-(中略)
+00;00;00;00 - 00;00;02;29
+N ああああ
+
+xmlをサイトで変換した形式
+００：００：１５　〜　００：００：１８
+N ああああ
+
+この２つの形式に対応しています。ペーストして　Ctrl+Enter　を押して下さい
+※混在も可能です
+
 """,
         help=help_text
     )
+    # テキストエリアの下に、チェックボックスを配置
+    force_n_insertion = st.checkbox("N強制挿入", value=True)
 
-with col2:
-    # 右側のタイトルを復活させ、高さを揃えます
-    st.write("コピーしてお使いください") 
-    
-    # 変換後のテキストを格納する変数
-    converted_text = ""
-    if input_text:
+# 2. 次に、「もし文字が入力されたら」右側の結果表示欄を表示します
+if input_text:
+    with col2:
+        # 右側のタイトルを配置
+        st.write("コピーしてお使いください")
+        
         try:
-            # チェックボックスの状態は、この後で取得します
-            # ここではまず変換処理だけを実行します
-            converted_text = convert_narration_script(input_text, st.session_state.get('force_n', True))
+            # チェックボックスの状態を使って変換処理を実行
+            converted_text = convert_narration_script(input_text, force_n_insertion)
+            st.text_area(
+                "コピーしてお使いください", # このラベルは非表示
+                value=converted_text, 
+                height=500,
+                label_visibility="collapsed"
+            )
         except Exception as e:
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
 
-    # 右側のテキストエリアを配置
-    st.text_area(
-        "コピーしてお使いください",
-        value=converted_text, 
-        height=500,
-        label_visibility="collapsed"
-    )
-
-# 2. 次に、テキスト入力欄の下に、独立した新しい段落としてチェックボックスを配置します
-#    st.columnsを使って、左側に寄せるようにします
-checkbox_col_left, _ = st.columns(2)
-with checkbox_col_left:
-    force_n_insertion = st.checkbox("N強制挿入", value=True, key='force_n')
-
-# 3. お客様が完成させたVer.1のフッターをそのまま使用
+# --- お客様が完成させたVer.1のフッターを、一文字も変えずにそのまま使用 ---
 st.markdown("---")
 st.markdown(
     """
