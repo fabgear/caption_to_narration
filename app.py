@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- 【バグ修正・最終完成版】▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- 【本文なし判定ロジック修正版】▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 変換テーブルの準備 ---
@@ -41,7 +41,6 @@ def convert_narration_script(text):
         if not time_match: continue
         
         groups = time_match.groups()
-        # --- ▼▼▼【バグ修正】ここで8個の変数を正しく受け取るように修正しました ▼▼▼ ---
         start_hh, start_mm, start_ss, start_dec, end_hh, end_mm, end_ss, end_dec = [int(g or 0) for g in groups]
 
         # 1. 開始時間のフォーマット（hhを考慮）
@@ -64,21 +63,26 @@ def convert_narration_script(text):
         text_content = block['text'].strip()
         body = ""
 
-        if text_content == "無記載":
-            body = ""
-        else:
-            match = re.match(r'^(\S+)\s+(.*)', text_content)
-            if match:
-                raw_speaker = match.group(1)
-                body = match.group(2).strip()
-                if raw_speaker.upper() == 'N':
-                    speaker_symbol = 'Ｎ'
-                else:
-                    speaker_symbol = raw_speaker.translate(to_zenkaku_all)
+        # --- ▼▼▼【ロジック修正】"無記載"の特別扱いを削除 ▼▼▼ ---
+        match = re.match(r'^(\S+)\s+(.*)', text_content)
+        if match:
+            raw_speaker = match.group(1)
+            body = match.group(2).strip()
+            if raw_speaker.upper() == 'N':
+                speaker_symbol = 'Ｎ'
             else:
-                if text_content.startswith('Ｎ '): body = text_content[2:].strip()
-                elif text_content.startswith('N '): body = text_content[2:].strip()
-                else: body = text_content
+                speaker_symbol = raw_speaker.translate(to_zenkaku_all)
+        else:
+            # 話者名がない、または全角Nで始まる場合
+            # (例: "N", "Ｎ", "本文だけ")
+            if text_content.upper() == 'N' or text_content == 'Ｎ':
+                body = "" # NやＮだけの行は本文なし
+            elif text_content.startswith('Ｎ '): 
+                body = text_content[2:].strip()
+            elif text_content.startswith('N '): 
+                body = text_content[2:].strip()
+            else: 
+                body = text_content
 
         if not body:
             body = "※注意！本文なし！"
@@ -117,7 +121,7 @@ def convert_narration_script(text):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分（変更なし）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分（説明文を修正）▼▼▼
 # ===============================================================
 st.set_page_config(
     page_title="Caption to Narration",
@@ -143,9 +147,9 @@ N ああああ
 
 または、
 ００：００：１５　〜　００：００：１８
-無記載
+N
 
-上のどちらの形式でも、下のように変換されます。
+上のテキストが、下のように変換されます。
 ------------------------------------------------
 ００００　　Ｎ　ああああ　（～０２）
 
@@ -155,9 +159,9 @@ N ああああ
 ・行頭に「N」や「n」があれば「Ｎ」になります。
 ・行頭に「VO」や「木村」などがあれば、それが話者名になります。
 ・話者名がない場合は、自動で「Ｎ」が補われます。
-・「無記載」と書かれた行は、本文なしとして扱います。
 
 【その他の機能】
+・本文が空の場合（例：行に"N"だけ）、自動で「※注意！本文なし！」と表示します。
 ・先頭のシーケンス名や余分な改行は自動で無視します。
 ・１時間を超えるタイムコード（hh:mm:ss）にも対応しています。
 """
