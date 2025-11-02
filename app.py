@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver2.2：最終Hマーカー修正）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver2.3：最終Hマーカー番号修正）▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 設定値 ---
@@ -72,27 +72,33 @@ def convert_narration_script(text):
         end_hh, end_mm, end_ss, end_fr = block['end_hh'], block['end_mm'], block['end_ss'], block['end_fr']
 
         should_insert_h_marker = False
+        marker_hh_to_display = -1 # ▼▼▼【ver2.3 変更点】表示すべきHを保持する変数を追加 ▼▼▼
         
         if i == 0:
             if start_hh > 0:
                  should_insert_h_marker = True
+                 marker_hh_to_display = start_hh
             previous_end_hh = end_hh 
         
         else:
-            # (1) Hをまたぐナレーションの場合 (00Hスタートだが01Hで終わる)
             if start_hh < end_hh:
+                 # (1) Hをまたぐナレーションの場合 (00Hスタートだが01Hで終わる)
                  should_insert_h_marker = True
+                 marker_hh_to_display = end_hh # またいだ後のH (1Hが正解)
             
-            # (2) 次のナレーションが新しいHで始まる場合 (前のナレーションが01Hで終わり、次のナレーションが02Hで始まる)
             elif start_hh > previous_end_hh: 
+                 # (2) 次のナレーションが新しいHで始まる場合 (01Hで始まる)
                  should_insert_h_marker = True
+                 marker_hh_to_display = start_hh # 新しいH (1Hが正解)
 
         if should_insert_h_marker:
+             # ▼▼▼【ver2.3 変更点】正しいマーカー番号を使用 ▼▼▼
              output_lines.append("")
-             output_lines.append(f"＜{str(start_hh).translate(to_zenkaku_num)}Ｈ＞")
+             output_lines.append(f"＜{str(marker_hh_to_display).translate(to_zenkaku_num)}Ｈ＞")
              output_lines.append("")
              
         previous_end_hh = end_hh 
+        # ▲▲▲【ver2.3 変更点】ここまで ▼▼▼
 
         # 以下、開始時間、本文、終了時間ロジックはver1.7/1.8/1.9のロジックを維持
         total_seconds_in_minute_loop = (start_mm % 60) * 60 + start_ss
