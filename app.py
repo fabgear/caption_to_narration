@@ -19,6 +19,7 @@ hankaku_symbols = '!@#$%&-+='
     zenkaku_chars = 'ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９　' + zenkaku_symbols
     
     to_zenkaku_all = str.maketrans(hankaku_chars, zenkaku_chars)
+    to_zenkaku_all = str.maketrans(hankaku_chars, zenkaku_chars)
 
     
     to_hankaku_time = str.maketrans('０１２３４５６７８９：〜', '0123456789:~')
