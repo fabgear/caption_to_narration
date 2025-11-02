@@ -3,10 +3,10 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver5.2：ロジック変更なし）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver5.3：ロジック変更なし）▼▼▼
 # ===============================================================
 def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=False):
-    # （中略：ロジックはver4.4と同一）
+    # （ロジックはver4.4と同一）
     FRAME_RATE = 30.0
     CONNECTION_THRESHOLD = 1.0 + (10.0 / FRAME_RATE)
 
@@ -185,11 +185,12 @@ def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=Fa
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - （ver5.2：最終UI修正）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - （ver5.3：CSSで隙間を詰める最終調整）▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
+# ▼▼▼【ver5.3 変更点】CSSでカラムの余白とチェックボックスの間隔を詰める ▼▼▼
 st.markdown("""<style> 
 textarea::placeholder { 
     font-size: 13px;
@@ -197,10 +198,22 @@ textarea::placeholder {
 textarea {
     font-size: 14px !important;
 }
+
+/* 2段目のカラムの余白を詰める */
+.stColumns:nth-child(4) > div { /* 4番目のstColumns（チェックボックスの段） */
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+}
+/* st.checkbox の間のマージンを調整 */
+.stColumns:nth-child(4) .stCheckbox {
+    margin-right: 0rem; /* 標準のマージンを削除 */
+    margin-left: 0rem; 
+}
 </style>""", unsafe_allow_html=True)
+# ▲▲▲【ver5.3 変更点】ここまで ▼▼▼
 
 # ----------------------------------------------------------------------------------
-# 0. help_textの定義場所を修正
+# 0. help_textの定義
 # ----------------------------------------------------------------------------------
 help_text = """
 【機能詳細】  
@@ -211,7 +224,6 @@ help_text = """
 ・Hをまたぐときは自動で仕切りが入ります  
 ・ナレーション本文の半角英数字は全て全角に変換します  
 """
-
 
 # ----------------------------------------------------------------------------------
 # 1段目：メインのテキストエリアとタイトル
@@ -255,9 +267,10 @@ N ああああ
 # 2段目：コントロールエリア（3カラム構造）
 # ----------------------------------------------------------------------------------
 # 3つのカラムを定義：[N強制挿入] [MM:SSで出力] [空]
-col1_bottom_opt, col2_bottom_opt, col3_bottom_opt = st.columns([1, 1, 1]) # 3分割
+# [2, 2, 1] の比率にして、チェックボックスが左側に詰まるように調整します
+col1_bottom_opt, col2_bottom_opt, col3_bottom_opt = st.columns([2, 2, 1]) 
 
-# ▼▼▼【ver5.2 修正点】チェックボックスの横並びを3カラムで実現 ▼▼▼
+# ▼▼▼【ver5.3 変更点】チェックボックスの横並びを3カラムで実現 ▼▼▼
 with col1_bottom_opt:
     n_force_insert = st.checkbox("N強制挿入", value=True)
 
@@ -265,7 +278,7 @@ with col2_bottom_opt:
     mm_ss_colon = st.checkbox("ｍｍ：ｓｓで出力", value=False)
     
 # col3_bottom_opt は空のまま（右側のテキストエリアの位置合わせを兼ねる）
-# ▲▲▲【ver5.2 修正点】ここまで ▼▼▼
+# ▲▲▲【ver5.3 変更点】ここまで ▼▼▼
 
 
 # ----------------------------------------------------------------------------------
