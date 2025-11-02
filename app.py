@@ -3,44 +3,43 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- 【全角バグ修正・最終完成版】▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （変更なし）▼▼▼
 # ===============================================================
-def convert_narration_script(text, force_n_insertion):
-    # --- 変換テーブルの準備 ---
+def convert_narration_script(text):
     to_zenkaku_num = str.maketrans('0123456789', '０１２３４５６７８９')
     hankaku_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '
     zenkaku_chars = 'ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９　'
     to_zenkaku_all = str.maketrans(hankaku_chars, zenkaku_chars)
     to_hankaku_time = str.maketrans('０１２３４５６７８９：〜', '0123456789:~')
 
-    # 空行を消さずに、そのまま行のリストを作成
     lines = text.strip().split('\n')
-    
-    # --- ▼▼▼【バグ修正】ここからが、新しい、よりシンプルなデータ検索ロジックです ▼▼▼ ---
     start_index = -1
     time_pattern = r'(\d{2})[:;](\d{2})[:;](\d{2})(?:[.;](\d{2}))?\s*-\s*(\d{2})[:;](\d{2})[:;](\d{2})(?:[.;](\d{2}))?'
     
     for i, line in enumerate(lines):
-        # どんな行が来ても、まず半角に正規化してチェックする
         normalized_line = line.strip().translate(to_hankaku_time).replace('~', '-')
         if re.match(time_pattern, normalized_line):
-            start_index = i # 最初のタイムコード行の「番号」だけを記録する
+            start_index = i
             break
             
-    if start_index == -1:
-        return "エラー：変換可能なタイムコードが見つかりませんでした。"
+    if start_index == -1: return "エラー：変換可能なタイムコードが見つかりませんでした。"
         
-    # ヘッダーなどを無視し、最初のタイムコード行から始まる、正しいデータ部分だけのリストを作成
     relevant_lines = lines[start_index:]
-    
-    # この後のペア作成ロジックは、以前のシンプルで確実なものに戻します
+
     blocks = []
     i = 0
     while i < len(relevant_lines):
-        time_val = relevant_lines[i].strip()
-        text_val = relevant_lines[i+1].strip() if i + 1 < len(relevant_lines) else ""
-        blocks.append({'time': time_val, 'text': text_val})
-        i += 2 # タイムコードと本文の2行分進む
+        current_line = relevant_lines[i].strip()
+        normalized_line = current_line.translate(to_hankaku_time).replace('~', '-')
+        if re.match(time_pattern, normalized_line):
+            time_val = current_line; text_val = ""
+            if i + 1 < len(relevant_lines):
+                next_line = relevant_lines[i+1].strip()
+                next_normalized = next_line.translate(to_hankaku_time).replace('~', '-')
+                if not re.match(time_pattern, next_normalized):
+                    text_val = next_line; i += 1
+            blocks.append({'time': time_val, 'text': text_val})
+        i += 1
 
     output_lines = []
     for i, block in enumerate(blocks):
@@ -61,7 +60,7 @@ def convert_narration_script(text, force_n_insertion):
         if start_hh > 0: formatted_start_time = f"{start_hh:02d}{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
         else: formatted_start_time = f"{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
 
-        speaker_symbol = None
+        speaker_symbol = 'Ｎ'
         text_content = block['text']
         body = ""
 
@@ -71,11 +70,10 @@ def convert_narration_script(text, force_n_insertion):
             if raw_speaker.upper() == 'N': speaker_symbol = 'Ｎ'
             else: speaker_symbol = raw_speaker.translate(to_zenkaku_all)
         else:
-            body = text_content.strip()
-            if body.upper() == 'N' or body == 'Ｎ': body = ""
-        
-        if force_n_insertion and speaker_symbol is None:
-            speaker_symbol = 'Ｎ'
+            if text_content.upper() == 'N' or text_content == 'Ｎ': body = ""
+            elif text_content.startswith('Ｎ '): body = text_content[2:].strip()
+            elif text_content.startswith('N '): body = text_content[2:].strip()
+            else: body = text_content
 
         if not body: body = "※注意！本文なし！"
         body = body.translate(to_zenkaku_all)
@@ -99,24 +97,22 @@ def convert_narration_script(text, force_n_insertion):
             else: formatted_end_time = f"{end_ss:02d}".translate(to_zenkaku_num)
             end_string = f"　（～{formatted_end_time}）"
             
-        if speaker_symbol:
-            output_lines.append(f"{formatted_start_time}　　{speaker_symbol}　{body}{end_string}")
-        else:
-            output_lines.append(f"{formatted_start_time}　　{body}{end_string}")
-
+        output_lines.append(f"{formatted_start_time}　　{speaker_symbol}　{body}{end_string}")
         if add_blank_line and i < len(blocks) - 1:
             output_lines.append("")
             
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - （お客様のVer.1 UI + Ver.2機能）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - 【tooltipのバグ修正版】▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
 st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
+col1, col2 = st.columns(2)
 
+# --- ▼▼▼【変更点】ここでポップアップで表示したいヘルプテキストを先に定義します ▼▼▼ ---
 help_text = """
 【機能詳細】  
 ・ENDタイム(秒のみ)が自動で入ります  
@@ -126,13 +122,10 @@ help_text = """
 ・ナレーション本文の半角英数字は全て全角に変換します  
 """
 
-col1, col2 = st.columns(2)
-
 with col1:
-    _, checkbox_col = st.columns([0.75, 0.25])
-    with checkbox_col:
-        force_n_insertion = st.checkbox("N強制挿入", value=True, help="話者名がない行に、自動で「Ｎ」を補います。")
-
+    st.header('')
+    
+    # --- ▼▼▼【変更点】`st.text_area`に、`help`引数を追加します ▼▼▼ ---
     input_text = st.text_area(
         "ナレーション原稿形式に変換します", 
         height=500, 
@@ -148,24 +141,20 @@ N ああああ
 ※混在も可能です
 
 """,
-        help=help_text
+        help=help_text # ここに追加！
     )
 
 with col2:
+    st.header('')
     if input_text:
-        st.write("コピーしてお使いください")
         try:
-            converted_text = convert_narration_script(input_text, force_n_insertion)
-            st.text_area(
-                "コピーしてお使いください",
-                value=converted_text, 
-                height=500,
-                label_visibility="collapsed"
-            )
+            converted_text = convert_narration_script(input_text)
+            st.text_area("コピーしてお使いください", value=converted_text, height=500)
         except Exception as e:
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
 
-st.markdown("---")
+# --- フッターをカスタマイズ ---
+st.markdown("---") # 区切り線
 st.markdown(
     """
     <div style="text-align: right; font-size: 9px; color: #C5D6B9;">
