@@ -233,16 +233,19 @@ N ああああ
         help=help_text
     )
     
-    # ▼▼▼【ver4.4 修正点】チェックボックスを左右に並べる ▼▼▼
-    col_checkbox_left, col_checkbox_right = st.columns(2)
+ # ▼▼▼【ver5.2 修正点】このブロックだけを書き換える ▼▼▼
+    # 3つのカラムを作成し、比率を [2, 2, 8] に指定 (20%, 20%, 60% のイメージ)
+    # これにより、チェックボックスが左に寄り、右の空のカラムがスペースを埋める
+    col_opt1, col_opt2, col_opt_spacer = st.columns([2, 2, 8])
     
-    with col_checkbox_left:
+    with col_opt1:
         n_force_insert = st.checkbox("N強制挿入", value=True)
     
-    with col_checkbox_right:
+    with col_opt2:
         mm_ss_colon = st.checkbox("ｍｍ：ｓｓで出力", value=False)
-        # ▲▲▲【ver4.4 修正点】ここまで ▼▼▼
-
+    
+    # col_opt_spacer (幅8) は空のまま、左側のチェックボックスを詰める役割を担う
+    # ▲▲▲【ver5.2 修正点】このブロックだけを書き換える ▲▲▲
 
 with col2:
     st.header('')
