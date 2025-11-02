@@ -3,11 +3,11 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver3.3：N強制挿入ロジック追加）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver3.4：N強制挿入ロジック追加）▼▼▼
 # ===============================================================
 # N_FORCE_INSERT_FLAG を受け取るように変更
 def convert_narration_script(text, n_force_insert_flag=True):
-    # （中略：ロジックは ver3.2 のまま。致命的なmaketrnasエラーがないことを確認済み）
+    # (中略：ロジックはver3.3と同一。機能は実装済み)
     FRAME_RATE = 30.0
     CONNECTION_THRESHOLD = 1.0 + (10.0 / FRAME_RATE)
 
@@ -72,7 +72,6 @@ def convert_narration_script(text, n_force_insert_flag=True):
         start_hh, start_mm, start_ss, start_fr = block['start_hh'], block['start_mm'], block['start_ss'], block['start_fr']
         end_hh, end_mm, end_ss, end_fr = block['end_hh'], block['end_mm'], block['end_ss'], block['end_fr']
 
-        # Hマーカーロジック（ver2.3を維持）
         should_insert_h_marker = False
         marker_hh_to_display = -1
         
@@ -90,7 +89,6 @@ def convert_narration_script(text, n_force_insert_flag=True):
              
         previous_end_hh = end_hh 
 
-        # 開始時間ロジック（ver1.7を維持）
         total_seconds_in_minute_loop = (start_mm % 60) * 60 + start_ss
         spacer = ""
         if 0 <= start_fr <= 9:
@@ -125,7 +123,6 @@ def convert_narration_script(text, n_force_insert_flag=True):
             if not body: body = "※注意！本文なし！"
         else:
             # N強制挿入がOFFの場合: 話者/本文の処理を一切行わず、そのまま出力
-            # ただし全角変換は行う
             speaker_symbol = ''; body = text_content 
 
         body = body.translate(to_zenkaku_all)
@@ -162,12 +159,11 @@ def convert_narration_script(text, n_force_insert_flag=True):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - （ver3.3：最終UIと機能連動）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - （ver3.4：上部保護と下部機能追加）▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
-# UIシンプル化のため、カスタムCSSも初期状態に戻す
 st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
 
 # ヘルプテキストを定義（変更なし）
@@ -182,14 +178,24 @@ help_text = """
 """
 
 # ----------------------------------------------------------------------------------
-# 1. 上部：テキストエリアとタイトル
+# 0. タイトル（上部） - 左右のテキストエリアの上に表示される
 # ----------------------------------------------------------------------------------
-col1_top, col2_top = st.columns(2)
-
-with col1_top:
+col1_header, col2_header = st.columns(2)
+with col1_header:
     st.header('ナレーション原稿形式に変換します')
+with col2_header:
+    st.header('コピーしてお使いください')
+
+
+# ----------------------------------------------------------------------------------
+# 1. 中部：テキストエリア本体
+# ----------------------------------------------------------------------------------
+col1_main, col2_main = st.columns(2)
+
+with col1_main:
+    # input_textは col1_main の中で定義
     input_text = st.text_area(
-        "　", 
+        "　", # ラベルをスペースにして、st.headerと近接させる
         height=500, 
         placeholder="""①キャプションをテキストで書き出した形式
 00;00;00;00 - 00;00;02;29
@@ -206,11 +212,10 @@ N ああああ
         help=help_text
     )
 
-with col2_top:
-    # 右カラムのヘッダーは常に表示し、左カラムと高さを揃える
-    st.header('コピーしてお使いください')
-    # テキストエリアは常に表示し、中身を制御
-    output_text_area = st.empty() # 出力エリアのプレースホルダーを確保
+with col2_main:
+    # 出力エリアのプレースホルダーを確保
+    output_text_area = st.empty() 
+
 
 # ----------------------------------------------------------------------------------
 # 2. 下部：コントロールエリア
@@ -218,7 +223,7 @@ with col2_top:
 col1_bottom, col2_bottom = st.columns(2)
 
 with col1_bottom:
-    # ▼▼▼【ver3.3 変更点】N強制挿入チェックボックス ▼▼▼
+    # ▼▼▼【ver3.4 変更点】N強制挿入チェックボックス ▼▼▼
     n_force_insert = st.checkbox("N強制挿入", value=True)
 
 with col2_bottom:
@@ -243,6 +248,7 @@ if input_text:
         with output_text_area.container():
             st.text_area("　", value="エラーが発生しました。テキストの形式を確認してください。", height=500)
             st.error(f"詳細: {e}")
+
 
 # --- フッターをカスタマイズ ---
 st.markdown("---")
