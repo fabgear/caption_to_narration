@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- 【空行バグ修正・最終完成版】▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- 【全バグ修正・最終完成版】▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 変換テーブルの準備 ---
@@ -17,7 +17,8 @@ def convert_narration_script(text):
     lines = text.strip().split('\n')
     
     start_index = -1
-    time_pattern = r'(\d{2}):(\d{2}):(\d{2})(?:[.;](\d{2}))?\s*-\s*(\d{2}):(\d{2}):(\d{2})(?:[.;](\d{2}))?'
+    # --- ▼▼▼【バグ修正】":" と ";" の両方に対応する正規表現に修正 ▼▼▼ ---
+    time_pattern = r'(\d{2})[:;](\d{2})[:;](\d{2})(?:[.;](\d{2}))?\s*-\s*(\d{2})[:;](\d{2})[:;](\d{2})(?:[.;](\d{2}))?'
     
     for i, line in enumerate(lines):
         normalized_line = line.strip().translate(to_hankaku_time).replace('~', '-')
@@ -30,19 +31,19 @@ def convert_narration_script(text):
         
     relevant_lines = lines[start_index:]
 
-    # --- ▼▼▼【バグ修正】より堅牢なペア作成ロジックに変更 ▼▼▼ ---
+    # --- ▼▼▼【バグ修正】より堅牢なペア作成ロジックに修正 ▼▼▼ ---
     blocks = []
     i = 0
     while i < len(relevant_lines):
         current_line = relevant_lines[i].strip()
         normalized_line = current_line.translate(to_hankaku_time).replace('~', '-')
         
+        # 現在行がタイムコード形式に一致するかチェック
         if re.match(time_pattern, normalized_line):
-            # 現在行がタイムコードの場合
             time_val = current_line
             text_val = "" # デフォルトの本文は空
             
-            # 次の行が存在し、かつそれがタイムコードではない場合、それを本文とする
+            # 次の行が存在し、かつそれがタイムコード形式ではない場合、それを本文とする
             if i + 1 < len(relevant_lines):
                 next_line = relevant_lines[i+1].strip()
                 next_normalized = next_line.translate(to_hankaku_time).replace('~', '-')
@@ -52,7 +53,6 @@ def convert_narration_script(text):
             
             blocks.append({'time': time_val, 'text': text_val})
         i += 1
-
 
     output_lines = []
     for i, block in enumerate(blocks):
