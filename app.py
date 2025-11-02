@@ -169,7 +169,14 @@ def convert_narration_script(text, n_force_insert_flag=True):
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
-st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
+st.markdown("""<style> 
+textarea::placeholder { 
+    font-size: 13px; /* プレースホルダーのサイズ */
+} 
+textarea {
+    font-size: 14px !important; /* ★入力・出力テキスト全体のサイズを14pxに指定 */
+}
+</style>""", unsafe_allow_html=True)
 col1, col2 = st.columns(2)
 
 help_text = """
