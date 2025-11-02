@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- 【ヘッダー無視・最終決定版】▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- 【hh対応・最終プロ仕様版】▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 変換テーブルの準備 ---
@@ -15,7 +15,6 @@ def convert_narration_script(text):
 
     lines = [line.strip() for line in text.strip().split('\n') if line.strip()]
     
-    # --- ▼▼▼【新機能】データ開始行を自動で探す ▼▼▼ ---
     start_index = -1
     time_pattern = r'(\d{2}):(\d{2}):(\d{2})(?:[.;](\d{2}))?\s*-\s*(\d{2}):(\d{2}):(\d{2})(?:[.;](\d{2}))?'
     
@@ -23,15 +22,12 @@ def convert_narration_script(text):
         normalized_line = line.translate(to_hankaku_time).replace('~', '-')
         if re.match(time_pattern, normalized_line):
             start_index = i
-            break # 最初のタイムコード行を見つけたらループを抜ける
+            break
             
     if start_index == -1:
-        # もしタイムコードが一つも見つからなければエラーメッセージを返す
         return "エラー：変換可能なタイムコードが見つかりませんでした。"
         
-    # ヘッダーなどを無視し、データ部分だけのリストを作成
     relevant_lines = lines[start_index:]
-    # --- ▲▲▲ 新機能ここまで ▲▲▲ ---
 
     blocks = []
     for i in range(0, len(relevant_lines), 2):
@@ -47,13 +43,23 @@ def convert_narration_script(text):
         groups = time_match.groups()
         start_hh, start_mm, start_ss, start_dec, end_hh, end_mm, end_ss, end_dec = [int(g or 0) for g in groups]
 
+        # 1. 開始時間のフォーマット（hhを考慮）
         start_total_seconds = start_ss + start_dec / 100.0
         rounded_sec = round(start_total_seconds)
         if rounded_sec >= 60:
             start_mm += 1
             rounded_sec = 0
-        formatted_start_time = f"{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
+            if start_mm >= 60:
+                start_hh += 1
+                start_mm = 0
+        
+        # --- ▼▼▼【変更点】hh（時）を考慮したフォーマットに変更 ▼▼▼ ---
+        if start_hh > 0:
+            formatted_start_time = f"{start_hh:02d}{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
+        else:
+            formatted_start_time = f"{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
 
+        # 2. 話者記号と本文のフォーマット
         speaker_symbol = 'Ｎ'
         text_content = block['text'].strip()
         match = re.match(r'^(\S+)\s+(.*)', text_content)
@@ -72,12 +78,13 @@ def convert_narration_script(text):
         if not body: body = "※注意！本文なし！"
         body = body.translate(to_zenkaku_all)
         
+        # 3. 終了時間と空白行の処理
         end_string = ""
         add_blank_line = True
 
         if i + 1 < len(blocks):
             next_normalized_time = blocks[i+1]['time'].translate(to_hankaku_time).replace('~', '-')
-            next_time_match = re.match(r'(\d{2}):(\d{2}):(\d{2})(?:[.;](\d{2}))?', next_normalized_time)
+            next_time_match = re.match(time_pattern, next_normalized_time)
             if next_time_match:
                 next_groups = next_time_match.groups()
                 next_start_hh, next_start_mm, next_start_ss, next_start_dec = [int(g or 0) for g in next_groups]
@@ -87,12 +94,16 @@ def convert_narration_script(text):
                     add_blank_line = False
 
         if add_blank_line:
-            if start_mm == end_mm:
-                formatted_end_time = f"{end_ss:02d}".translate(to_zenkaku_num)
-            else:
+            # --- ▼▼▼【変更点】終了時間もhh（時）を考慮したフォーマットに変更 ▼▼▼ ---
+            if start_hh != end_hh:
+                formatted_end_time = f"{end_hh:02d}{end_mm:02d}{end_ss:02d}".translate(to_zenkaku_num)
+            elif start_mm != end_mm:
                 formatted_end_time = f"{end_mm:02d}{end_ss:02d}".translate(to_zenkaku_num)
+            else:
+                formatted_end_time = f"{end_ss:02d}".translate(to_zenkaku_num)
             end_string = f"　（～{formatted_end_time}）"
             
+        # 4. 最終的な行を組み立て
         output_lines.append(f"{formatted_start_time}　　{speaker_symbol}　{body}{end_string}")
         if add_blank_line and i < len(blocks) - 1:
             output_lines.append("")
@@ -100,7 +111,7 @@ def convert_narration_script(text):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分（説明文を更新）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分（変更なし）▼▼▼
 # ===============================================================
 st.set_page_config(
     page_title="Caption to Narration",
