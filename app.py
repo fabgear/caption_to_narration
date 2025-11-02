@@ -138,7 +138,8 @@ with col1:
 
     # お客様のVer.1のtext_areaを、一切変更せずにそのまま使用します
     input_text = st.text_area(
-        "ナレーション原稿形式に変換します", 
+        "ナレーション原稿形式に変換します　with checkbox_col:
+        force_n_insertion = st.checkbox("N強制挿入", value=True")", 
         height=500, 
         placeholder="""キャプションをテキストで書き出した形式
 00;00;00;00 - 00;00;02;29
