@@ -3,10 +3,11 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver2.8：ロジック変更なし）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver2.9：ロジック変更なし）▼▼▼
 # ===============================================================
 def convert_narration_script(text):
-    # --- 設定値 ---
+    # (ロジック部分は ver2.4/2.3 の最終安定版をそのまま維持)
+    # ...
     FRAME_RATE = 30.0
     CONNECTION_THRESHOLD = 1.0 + (10.0 / FRAME_RATE)
 
@@ -169,7 +170,7 @@ def convert_narration_script(text):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - （ver2.8：UI安定性テスト）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - （ver2.9：UIバグ修正とバランス最適化）▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
@@ -177,6 +178,7 @@ st.title('Caption to Narration')
 st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
 col1, col2 = st.columns(2)
 
+# ヘルプテキストを定義（変更なし）
 help_text = """
 【機能詳細】  
 ・ENDタイム(秒のみ)が自動で入ります  
@@ -187,15 +189,21 @@ help_text = """
 ・ナレーション本文の半角英数字は全て全角に変換します  
 """
 
-# ▼▼▼【ver2.8 変更点】左カラム用のコンテナを配置 ▼▼▼
+# ▼▼▼【ver2.9 変更点】ヘッダーの扱いをシンプルに戻す ▼▼▼
+# 左右のタイトルはテキストエリアに統合せず、個別に配置し、高さを揃える
 with col1:
-    st.header('')
-    
+    st.header('ナレーション原稿形式に変換します') 
+
+# 右カラムは input_text があるときのみ st.header を配置するため、ここでは空
+# if input_text: の中での配置に依存
+
+# 左右のテキストエリアの配置
+with col1:
     # ----------------------------------------------------------------------
-    # テキストエリアとその下の要素をグループ化し、全体の高さを確保する
+    # テキストエリアとその下の要素
     # ----------------------------------------------------------------------
     input_text = st.text_area(
-        "ナレーション原稿形式に変換します", # タイトルをラベルとして使用
+        "　", # ラベルをスペースにして、st.headerと近接させる
         height=500, 
         placeholder="""①キャプションをテキストで書き出した形式
 00;00;00;00 - 00;00;02;29
@@ -212,36 +220,27 @@ N ああああ
         help=help_text
     )
     
-    # ▼▼▼【ver2.8 変更点】チェックボックスの表示（ロジック未実装） ▼▼▼
-    st.checkbox("N強制挿入", value=True)
+    # ▼▼▼【ver2.9 変更点】チェックボックスの表示 ▼▼▼
+    # チェックボックスの状態を後のロジックで利用するため変数に格納
+    checkbox_state = st.checkbox("N強制挿入", value=True)
     # ----------------------------------------------------------------------
 
-# ▼▼▼【ver2.8 変更点】右カラム用のコンテナを配置 ▼▼▼
 with col2:
-    st.header('')
-    
-    # ----------------------------------------------------------------------
-    # 出力テキストエリアと下のプレースホルダーを配置し、高さを揃える
-    # ----------------------------------------------------------------------
     if input_text:
+        # 入力がある場合のみ、ヘッダーとテキストエリアを表示
+        st.header('コピーしてお使いください') 
+        
         try:
             converted_text = convert_narration_script(input_text)
-            st.text_area("コピーしてお使いください", value=converted_text, height=500)
+            st.text_area("　", value=converted_text, height=500)
             
-            # ▼▼▼【ver2.8 変更点】高さ合わせのためのプレースホルダー（重要） ▼▼▼
-            # チェックボックスと同じ分の高さを確保
+            # ▼▼▼【ver2.9 変更点】高さ合わせのためのプレースホルダー（重要） ▼▼▼
+            # チェックボックスと同じ分の高さを確保 (st.checkboxは約38px)
             st.markdown('<div style="height: 38px;"></div>', unsafe_allow_html=True) 
             
         except Exception as e:
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
-    else:
-        # 入力がない場合の右側の上部タイトル
-        st.text_area("コピーしてお使いください", value="", height=500, disabled=True)
-        # ▼▼▼【ver2.8 変更点】高さ合わせのためのプレースホルダー（重要） ▼▼▼
-        # 左側と同じ分の高さを確保
-        st.markdown('<div style="height: 38px;"></div>', unsafe_allow_html=True)
-
-
+            
 # --- フッターをカスタマイズ ---
 st.markdown("---")
 st.markdown(
