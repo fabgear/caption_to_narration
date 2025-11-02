@@ -235,18 +235,15 @@ N ああああ
 # ----------------------------------------------------------------------------------
 # 2段目：コントロールエリア（3カラム構造）
 # ----------------------------------------------------------------------------------
-col1_bottom_opt, col2_bottom_opt, col3_bottom_opt, col4_bottom_opt = st.columns([0.1, 2, 2, 8]) 
+col1_bottom_opt, col2_bottom_opt, col3_bottom_opt = st.columns([2, 2, 8]) 
 
 # ▼▼▼【ver5.4 修正点】チェックボックスの横並びを3カラムで実現（構造をver5.2の形に戻す） ▼▼▼
-
 with col1_bottom_opt:
-    st.text_area("")
-
-with col2_bottom_opt:
     n_force_insert = st.checkbox("N強制挿入", value=True)
 
-with col3_bottom_opt:
+with col2_bottom_opt:
     mm_ss_colon = st.checkbox("ｍｍ：ｓｓで出力", value=False)
+
 
 
 with col2:
