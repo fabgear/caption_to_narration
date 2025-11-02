@@ -114,8 +114,7 @@ def convert_narration_script(text, force_n_insertion):
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
-st.markdown("""<style> textarea::placeholder { font-size: 10px; } </style>""", unsafe_allow_html=True)
-col1, col2 = st.columns(2)
+st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
 
 # お客様が完成させたVer.1のヘルプテキストをそのまま使用
 help_text = """
@@ -123,50 +122,54 @@ help_text = """
 ・ENDタイム(秒のみ)が自動で入ります  
 　分をまたぐ時は(分秒)、次のナレーションと繋がる時は割愛されます  
 ・頭の「N」は自動で全角に変換され未記載の時は自動挿入されます  
-　VOや実況などN以外はそのまま適応されます  ※左下の✔で選択可能
+　VOや実況などN以外はそのまま適応されます  
 ・ナレーション本文の半角英数字は全て全角に変換します  
-
 """
 
+# --- ▼▼▼【変更点】ここからが、お客様の理想のUIを実現するためのコードです ▼▼▼ ---
+
+# 1. まず、左右のテキスト入力欄だけを配置します
+col1, col2 = st.columns(2)
+
 with col1:
-    # お客様の理想のレイアウトを、最もシンプルなコードで実現
     input_text = st.text_area(
         "ナレーション原稿形式に変換します", 
         height=500, 
         placeholder="""キャプションをテキストで書き出した形式
-00;00;00;00 - 00;00;02;29
-N ああああ
-
-xmlをサイトで変換した形式
-００：００：１５　〜　００：００：１８
-N ああああ
-
-この２つの形式に対応しています。ペーストして　Ctrl+Enter　を押して下さい
-※混在も可能です
-
+(中略)
 """,
         help=help_text
     )
-    force_n_insertion = st.checkbox("N強制挿入", value=True)
 
 with col2:
-    # --- ▼▼▼【変更点】右側のタイトルを復活させ、高さを揃えます ▼▼▼ ---
-    st.write("コピーしてお使いください") # st.header('') から変更
+    # 右側のタイトルを復活させ、高さを揃えます
+    st.write("コピーしてお使いください") 
     
+    # 変換後のテキストを格納する変数
+    converted_text = ""
     if input_text:
         try:
-            converted_text = convert_narration_script(input_text, force_n_insertion)
-            # --- ▼▼▼【変更点】`label_visibility`を削除し、タイトルを表示させます ▼▼▼ ---
-            st.text_area(
-                "コピーしてお使いください", # このラベルは表示されませんが、高さを揃えるために重要
-                value=converted_text, 
-                height=500,
-                label_visibility="collapsed"
-            )
+            # チェックボックスの状態は、この後で取得します
+            # ここではまず変換処理だけを実行します
+            converted_text = convert_narration_script(input_text, st.session_state.get('force_n', True))
         except Exception as e:
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
 
-# お客様が完成させたVer.1のフッターをそのまま使用
+    # 右側のテキストエリアを配置
+    st.text_area(
+        "コピーしてお使いください",
+        value=converted_text, 
+        height=500,
+        label_visibility="collapsed"
+    )
+
+# 2. 次に、テキスト入力欄の下に、独立した新しい段落としてチェックボックスを配置します
+#    st.columnsを使って、左側に寄せるようにします
+checkbox_col_left, _ = st.columns(2)
+with checkbox_col_left:
+    force_n_insertion = st.checkbox("N強制挿入", value=True, key='force_n')
+
+# 3. お客様が完成させたVer.1のフッターをそのまま使用
 st.markdown("---")
 st.markdown(
     """
