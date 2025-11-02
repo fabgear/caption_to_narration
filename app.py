@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver1.5：バグ修正）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver1.6：Hまたぎ対応）▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 設定値 ---
@@ -60,28 +60,32 @@ def convert_narration_script(text):
         groups = time_match.groups()
         start_hh, start_mm, start_ss, start_fr, end_hh, end_mm, end_ss, end_fr = [int(g or 0) for g in groups]
 
+        # H繰り上がりマーカー
         if previous_hh == -1: previous_hh = start_hh
         if start_hh > previous_hh:
             output_lines.append("")
             output_lines.append(f"＜{str(start_hh).translate(to_zenkaku_num)}Ｈ＞")
             output_lines.append("")
         previous_hh = start_hh
+        
+        # ▼▼▼【ver1.6 変更点】開始時間の分をH繰り上がりを考慮して調整 ▼▼▼
+        # 分の表示を、時を無視して00〜59にループするように調整
+        display_mm = start_mm % 60 
 
-        # 開始時間のフォーマット（ver1.3のロジックを維持）
+        # 開始時間のフォーマット（ver1.3のロジックを維持しつつ、display_mmを使う）
         spacer = ""
         if 0 <= start_fr <= 9:
-            formatted_start_time = f"{start_mm:02d}{start_ss:02d}".translate(to_zenkaku_num)
+            formatted_start_time = f"{display_mm:02d}{start_ss:02d}".translate(to_zenkaku_num)
             spacer = "　　　"
         elif 10 <= start_fr <= 22:
-            time_num_part = f"{start_mm:02d}{start_ss:02d}".translate(to_zenkaku_num)
+            time_num_part = f"{display_mm:02d}{start_ss:02d}".translate(to_zenkaku_num)
             formatted_start_time = f"{time_num_part}半"
             spacer = "　　"
         else: # 23F以降
             display_ss = start_ss + 1
-            display_mm = start_mm
             if display_ss >= 60:
                 display_ss = 0
-                display_mm += 1
+                display_mm += 1 # 分が繰り上がっても、ここでも % 60で表示は00〜59になる
             formatted_start_time = f"{display_mm:02d}{display_ss:02d}".translate(to_zenkaku_num)
             spacer = "　　　"
 
@@ -104,21 +108,17 @@ def convert_narration_script(text):
         end_string = ""; add_blank_line = True
         
         if i + 1 < len(blocks):
-            # ▼▼▼【ver1.5 修正点】ここで次のブロックの情報を取得し、次のブロックが有効なタイムコードを持つかチェック ▼▼▼
             next_block_time_str = blocks[i+1]['time']
             next_block_time_with_frames = re.sub(r'(\d{2}:\d{2}:\d{2})(?![:.]\d{2})', r'\1.00', next_block_time_str)
             next_normalized_time = next_block_time_with_frames.translate(to_hankaku_time).replace('~', '-')
             
-            # **if文の外で定義したので、次の行で参照できるようになる**
             if re.match(time_pattern, next_normalized_time): 
-                # （つながり判定のロジックはver1.2/1.3を維持）
                 next_groups = re.match(time_pattern, next_normalized_time).groups()
                 next_start_hh, next_start_mm, next_start_ss, next_start_fr, _, _, _, _ = [int(g or 0) for g in next_groups]
                 end_total_seconds = (end_hh * 3600) + (end_mm * 60) + end_ss + (end_fr / FRAME_RATE)
                 next_start_total_seconds = (next_start_hh * 3600) + (next_start_mm * 60) + next_start_ss + (next_start_fr / FRAME_RATE)
                 if next_start_total_seconds - end_total_seconds < CONNECTION_THRESHOLD:
                     add_blank_line = False
-            # ▼▼▼【ver1.5 修正点】ここまで ▼▼▼
 
         if add_blank_line:
             # 終了時間の丸めロジック（ver1.4のロジックを維持）
@@ -131,9 +131,15 @@ def convert_narration_script(text):
                     adj_ss = 59
                     adj_mm -= 1
             
-            if start_mm != adj_mm:
-                formatted_end_time = f"{adj_mm:02d}{adj_ss:02d}".translate(to_zenkaku_num)
+            # ▼▼▼【ver1.6 変更点】終了時間と開始時間の比較判定ロジックを修正 ▼▼▼
+            # 時が異なるとき、または調整後の分が元の分と異なるときに、分秒表記とする
+            if start_hh != end_hh or start_mm != adj_mm:
+                # 時をまたぐか、分が異なるときはmmss表記
+                # adj_mmを00-59に調整（Hをまたいでも00に戻す）
+                adj_mm_display = adj_mm % 60
+                formatted_end_time = f"{adj_mm_display:02d}{adj_ss:02d}".translate(to_zenkaku_num)
             else:
+                # 時も分も同じときはss表記
                 formatted_end_time = f"{adj_ss:02d}".translate(to_zenkaku_num)
                 
             end_string = f" (~{formatted_end_time})"
@@ -145,6 +151,7 @@ def convert_narration_script(text):
             
     return "\n".join(output_lines)
 
+# （StreamlitのUI部分は変更なし）
 # ===============================================================
 # ▼▼▼ Streamlitの画面を作る部分 - （変更なし）▼▼▼
 # ===============================================================
