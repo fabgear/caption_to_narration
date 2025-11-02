@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver2.7：ロジック変更なし）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver2.4：最終表記調整）▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 設定値 ---
@@ -91,11 +91,13 @@ def convert_narration_script(text):
 
         if should_insert_h_marker:
              output_lines.append("")
+             # ▼▼▼【ver2.4 変更点】Hマーカーを【X H】形式に変更 ▼▼▼
              output_lines.append(f"【{str(marker_hh_to_display).translate(to_zenkaku_num)}Ｈ】")
              output_lines.append("")
              
         previous_end_hh = end_hh 
 
+        # 以下、開始時間、本文、終了時間ロジックはver1.7/1.8/1.9のロジックを維持
         total_seconds_in_minute_loop = (start_mm % 60) * 60 + start_ss
         
         spacer = ""
@@ -159,6 +161,7 @@ def convert_narration_script(text):
             else:
                 formatted_end_time = f"{adj_ss:02d}".translate(to_zenkaku_num)
                 
+            # ▼▼▼【ver2.4 変更点】終了時間の波線を全角に変更（括弧は半角維持）▼▼▼
             end_string = f" (～{formatted_end_time})"
             
         output_lines.append(f"{formatted_start_time}{spacer}{speaker_symbol}　{body}{end_string}")
@@ -168,16 +171,14 @@ def convert_narration_script(text):
             
     return "\n".join(output_lines)
 
-# ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - （ver2.7：UI再調整）▼▼▼
-# ===============================================================
+# （StreamlitのUI部分は変更なし）
+# ... 省略 ...
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
-# ▼▼▼【ver2.7 変更点】カスタムCSSを削除し、標準の余白に戻す ▼▼▼
 st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
+col1, col2 = st.columns(2)
 
-# ヘルプテキストを定義（変更なし）
 help_text = """
 【機能詳細】  
 ・ENDタイム(秒のみ)が自動で入ります  
@@ -188,16 +189,11 @@ help_text = """
 ・ナレーション本文の半角英数字は全て全角に変換します  
 """
 
-col1, col2 = st.columns(2)
-
-# Col 1: 入力エリア側
 with col1:
-    # ▼▼▼【ver2.7 変更点】st.markdownからst.subheaderに変更し、標準の適切な余白を利用 ▼▼▼
-    st.subheader('ナレーション原稿形式に変換します') 
-
-    # --- テキストエリア本体 ---
+    st.header('')
+    
     input_text = st.text_area(
-        "　",
+        "ナレーション原稿形式に変換します", 
         height=500, 
         placeholder="""①キャプションをテキストで書き出した形式
 00;00;00;00 - 00;00;02;29
@@ -214,23 +210,14 @@ N ああああ
         help=help_text
     )
 
-# Col 2: 出力エリア側
 with col2:
-    # --- 出力エリアのタイトルとテキストエリア本体 ---
+    st.header('')
     if input_text:
-        # ▼▼▼【ver2.7 変更点】st.markdownからst.subheaderに変更 ▼▼▼
-        st.subheader('コピーしてお使いください') 
-        
         try:
             converted_text = convert_narration_script(input_text)
-            st.text_area("　", value=converted_text, height=500)
+            st.text_area("コピーしてお使いください", value=converted_text, height=500)
         except Exception as e:
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
-    else:
-        # input_textがない場合でも、右側にも「空のサブヘッダー」を配置し、高さを揃える試み
-        # これが効くかはStreamlitのバージョンに依存するが、レイアウト維持の意図は明確になる
-        st.subheader('　')
-
 
 # --- フッターをカスタマイズ ---
 st.markdown("---")
