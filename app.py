@@ -6,7 +6,7 @@ import math
 # ▼▼▼ ツールの本体（エンジン部分）- （ver1.2）▼▼▼
 # ===============================================================
 def convert_narration_script(text):
-    # --- ▼▼▼【ver1.2 変更点】設定値を追加 ▼▼▼ ---
+    # --- 設定値 ---
     FRAME_RATE = 30.0 # タイムコードのフレームレートを30と仮定
     CONNECTION_THRESHOLD = 1.0 + (10.0 / FRAME_RATE) # つながりと判断する閾値（1秒10F）
 
@@ -18,18 +18,17 @@ def convert_narration_script(text):
 
     lines = text.strip().split('\n')
     start_index = -1
-    # ▼▼▼【ver1.2 変更点】正規表現を少しだけ厳密に（ピリオドも許容）▼▼▼
     time_pattern = r'(\d{2})[:;](\d{2})[:;](\d{2})[;.](\d{2})\s*-\s*(\d{2})[:;](\d{2})[:;](\d{2})[;.](\d{2})'
     
+    # タイムコードが始まる行を探す
     for i, line in enumerate(lines):
-        # 入力行にフレームがない場合（00:00:00 のような形式）、".00"を補う
         line_with_frames = re.sub(r'(\d{2}:\d{2}:\d{2})(?![:.]\d{2})', r'\1.00', line)
         normalized_line = line_with_frames.strip().translate(to_hankaku_time).replace('~', '-')
         if re.match(time_pattern, normalized_line):
             start_index = i
             break
             
-    if start_index == -1: return "エラー：変換可能なタイムコード（フレーム情報を含む）が見つかりませんでした。"
+    if start_index == -1: return "エラー：変換可能なタイムコード（フレーム情報を含む形式）が見つかりませんでした。"
         
     relevant_lines = lines[start_index:]
 
@@ -37,7 +36,6 @@ def convert_narration_script(text):
     i = 0
     while i < len(relevant_lines):
         current_line = relevant_lines[i].strip()
-        # ▼▼▼【ver1.2 変更点】ここでもフレーム抜けを補完する処理を追加 ▼▼▼
         line_with_frames = re.sub(r'(\d{2}:\d{2}:\d{2})(?![:.]\d{2})', r'\1.00', current_line)
         normalized_line = line_with_frames.translate(to_hankaku_time).replace('~', '-')
 
@@ -55,7 +53,6 @@ def convert_narration_script(text):
     previous_hh = -1
 
     for i, block in enumerate(blocks):
-        # ▼▼▼【ver1.2 変更点】ここでもフレーム抜けを補完する処理を追加 ▼▼▼
         line_with_frames = re.sub(r'(\d{2}:\d{2}:\d{2})(?![:.]\d{2})', r'\1.00', block['time'])
         normalized_time_str = line_with_frames.translate(to_hankaku_time).replace('~', '-')
         time_match = re.match(time_pattern, normalized_time_str)
@@ -71,11 +68,9 @@ def convert_narration_script(text):
             output_lines.append("")
         previous_hh = start_hh
 
-        # ▼▼▼【ver1.2 変更点】開始時間の秒をフレームを考慮して丸める ▼▼▼
         start_total_seconds_val = start_ss + start_fr / FRAME_RATE
         rounded_sec = round(start_total_seconds_val)
         
-        # 丸めた結果の繰り上がり処理
         calc_mm, calc_hh = start_mm, start_hh
         if rounded_sec >= 60:
             rounded_sec = 0
@@ -89,7 +84,6 @@ def convert_narration_script(text):
         speaker_symbol = 'Ｎ'
         text_content = block['text']
         body = ""
-        # （話者と本文の処理は変更なし）
         match = re.match(r'^(\S+)\s+(.*)', text_content)
         if match:
             raw_speaker = match.group(1); body = match.group(2).strip()
@@ -111,7 +105,6 @@ def convert_narration_script(text):
                 next_groups = re.match(time_pattern, next_normalized_time).groups()
                 next_start_hh, next_start_mm, next_start_ss, next_start_fr, _, _, _, _ = [int(g or 0) for g in next_groups]
                 
-                # ▼▼▼【ver1.2 変更点】フレームを考慮した秒数で「つながり」を判定 ▼▼▼
                 end_total_seconds = (end_hh * 3600) + (end_mm * 60) + end_ss + (end_fr / FRAME_RATE)
                 next_start_total_seconds = (next_start_hh * 3600) + (next_start_mm * 60) + next_start_ss + (next_start_fr / FRAME_RATE)
                 
@@ -119,9 +112,7 @@ def convert_narration_script(text):
                     add_blank_line = False
 
         if add_blank_line:
-            # ▼▼▼【ver1.2 変更点】ご指定のルールで終了時間を計算 ▼▼▼
             total_frames = (end_hh * 3600 * int(FRAME_RATE)) + (end_mm * 60 * int(FRAME_RATE)) + (end_ss * int(FRAME_RATE)) + end_fr
-            # 15フレーム（0.5秒）を引いてから秒に変換し、床関数で丸める
             adjusted_total_seconds = math.floor((total_frames - 15) / FRAME_RATE)
 
             if adjusted_total_seconds >= 0:
@@ -129,7 +120,6 @@ def convert_narration_script(text):
                 adj_mm = int((adjusted_total_seconds % 3600) // 60)
                 adj_ss = int(adjusted_total_seconds % 60)
                 
-                # 元の開始時間と比較して表示形式を決める
                 if start_mm != adj_mm:
                     formatted_end_time = f"{adj_mm:02d}{adj_ss:02d}".translate(to_zenkaku_num)
                 else:
@@ -199,14 +189,4 @@ st.markdown(
     </div>
     """,
     unsafe_allow_html=True
-)```
-
-### ver1.1からの主な変更点の解説
-
-1.  **フレームレートの定義**: コードの冒頭で `FRAME_RATE = 30.0` と定義し、以降の計算はすべてこの値を基準に行うようにしました。これにより、もし将来的に24fpsなど他のレートに対応する場合も、この一行を変更するだけで済みます。
-2.  **新しい「つながり」判定**: `CONNECTION_THRESHOLD` として `1秒10フレーム` を秒に換算した値を定義し、ナレーション間の時間をこの閾値と比較するようにロジックを更新しました。
-3.  **終了時間の新丸めロジック**: ご指定いただいた「15フレームを基準に秒を決定する」というロジックを数学的に実装しました。具体的には、総フレーム数を計算し、そこから15フレームを引いた上で秒に変換しています。これにより、ご希望通りの丸め処理が実現されます。
-4.  **入力への寛容性**: ユーザーが `00:00:15` のようにフレーム情報を省略して入力した場合でも、内部で自動的に `.00` を補って処理を継続できるように、いくつかの処理を追加しました。これにより、ツールの安定性が向上しています。
-
-これで、ver1.2は完成です！
-ぜひテストしてみてください。もし何かあれば、すぐに対応します。
+)
