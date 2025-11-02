@@ -109,12 +109,15 @@ def convert_narration_script(text, force_n_insertion):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - 【お客様の理想のUIをHTML/CSSで完全再現】▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - 【UIバグ修正・最終完成版】▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
-# --- お客様が完成させたVer.1のヘルプテキストをそのまま使用 ---
+st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
+col1, col2 = st.columns(2)
+
+# お客様が完成させたVer.1のヘルプテキストをそのまま使用
 help_text = """
 【機能詳細】  
 ・ENDタイム(秒のみ)が自動で入ります  
@@ -124,71 +127,23 @@ help_text = """
 ・ナレーション本文の半角英数字は全て全角に変換します  
 """
 
-# --- ▼▼▼ ここからが、UIを精密に組み立てるためのHTML/CSS/JavaScriptです ▼▼▼ ---
-
-# 1. HTMLとCSSで、タイトルとチェックボックスの「骨格」を作る
-st.markdown("""
-<style>
-    /* チェックボックスをStreamlitの標準スタイルから少し調整 */
-    div[data-testid="stCheckbox"] {
-        margin-top: -8px; /* 上方向の余白を詰める */
-    }
-</style>
-
-<!-- タイトルとチェックボックスを横並びにするためのコンテナ -->
-<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: -15px;">
-    <!-- 左側のタイトル部分 -->
-    <div id="custom-label-container" style="display: flex; align-items: center; gap: 1em;">
-        <!-- ここに後からJavaScriptでタイトルとスペースを挿入します -->
-    </div>
-    <!-- 右側のチェックボックスを配置する場所 -->
-    <div id="checkbox-container"></div>
-</div>
-""", unsafe_allow_html=True)
-
-# 2. JavaScriptで、Streamlitが作った部品を、HTMLの骨格の正しい位置に移動させる
-st.components.v1.html("""
-    <script>
-        const checkExist = setInterval(function() {
-           // Streamlitが生成した「チェックボックス」と「テキストエリアのラベル」を探す
-           const checkbox = window.parent.document.querySelector('div[data-testid="stCheckbox"]');
-           const textAreaLabel = window.parent.document.querySelector('label[data-baseweb="form-control-label"]');
-           
-           // HTMLで作った「タイトルを置く場所」と「チェックボックスを置く場所」を探す
-           const customLabelContainer = window.parent.document.getElementById('custom-label-container');
-           const checkboxContainer = window.parent.document.getElementById('checkbox-container');
-
-           // 全ての部品が見つかったら、組み立てを開始
-           if (checkbox && textAreaLabel && customLabelContainer && checkboxContainer) {
-              // (1) 元のラベルからテキストだけを取り出し、HTMLの正しい場所に配置
-              const labelText = textAreaLabel.innerText;
-              customLabelContainer.innerText = labelText + '　　'; // スペースを2つ追加
-              
-              // (2) チェックボックスをHTMLの正しい場所に移動
-              checkboxContainer.appendChild(checkbox);
-              
-              // (3) 元のラベルは不要になったので、非表示にする
-              textAreaLabel.style.display = 'none';
-
-              clearInterval(checkExist); // 成功したので監視を終了
-           }
-        }, 100); // 0.1秒ごとにチェック
-    </script>
-""", height=0)
-
-
-# 3. Python側で、Streamlitの部品を（非表示の状態で）生成する
-col1, col2 = st.columns(2)
-
 with col1:
-    st.header('')
+    # --- ▼▼▼【変更点】ここからが、お客様の理想のUIを実現するためのコードです ▼▼▼ ---
     
-    # チェックボックスを生成（JavaScriptで移動させるので、ここでの見た目は気にしない）
-    force_n_insertion = st.checkbox("N強制挿入", value=True)
+    # 1. まず、部品を横並びにするための「箱」を準備します
+    label_container = st.container()
+    with label_container:
+        # st.columnsを使って、左側のタイトルと右側のチェックボックスを配置します
+        left_col, right_col = st.columns([0.8, 0.2]) # 横幅の比率を調整
+        with left_col:
+            st.write("ナレーション原稿形式に変換します")
+        with right_col:
+            # チェックボックスにはヘルプテキストは付けません
+            force_n_insertion = st.checkbox("N強制挿入", value=True)
 
-    # お客様のVer.1のtext_areaを、help機能だけを活かして使用
+    # 2. 次に、お客様が完成させたVer.1のテキスト入力エリアを、一切変更せずにそのまま配置します
     input_text = st.text_area(
-        "ナレーション原稿形式に変換します", 
+        "ナレーション原稿形式に変換します", # このラベルは表示されませんが、help機能のために必要です
         height=500, 
         placeholder="""キャプションをテキストで書き出した形式
 00;00;00;00 - 00;00;02;29
@@ -202,7 +157,8 @@ N ああああ
 ※混在も可能です
 
 """,
-        help=help_text
+        help=help_text,
+        label_visibility="collapsed" # 自作ラベルがあるので、本来のラベルは非表示にします
     )
 
 with col2:
@@ -214,7 +170,7 @@ with col2:
         except Exception as e:
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
 
-# --- お客様が完成させたVer.1のフッターをそのまま使用 ---
+# お客様が完成させたVer.1のフッターをそのまま使用
 st.markdown("---")
 st.markdown(
     """
