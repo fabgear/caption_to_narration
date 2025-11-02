@@ -3,23 +3,18 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- 【最終・完全版】▼▼▼
-# すべての機能（複数フォーマット対応, ヘッダー無視, hh対応, 無記載対応）を統合
+# ▼▼▼ ツールの本体（エンジン部分）- 【バグ修正・最終完成版】▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 変換テーブルの準備 ---
-    # 数字（半角→全角）
     to_zenkaku_num = str.maketrans('0123456789', '０１２３４５６７８９')
-    # 英数字とスペース（半角→全角）
     hankaku_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '
     zenkaku_chars = 'ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９　'
     to_zenkaku_all = str.maketrans(hankaku_chars, zenkaku_chars)
-    # タイムコードに含まれる可能性のある全角記号を半角に変換
     to_hankaku_time = str.maketrans('０１２３４５６７８９：〜', '0123456789:~')
 
     lines = [line.strip() for line in text.strip().split('\n') if line.strip()]
     
-    # --- データ開始行を自動で探す ---
     start_index = -1
     time_pattern = r'(\d{2}):(\d{2}):(\d{2})(?:[.;](\d{2}))?\s*-\s*(\d{2}):(\d{2}):(\d{2})(?:[.;](\d{2}))?'
     
@@ -30,9 +25,8 @@ def convert_narration_script(text):
             break
             
     if start_index == -1:
-        return "エラー：変換可能なタイムコードが見つかりませんでした。テキストの形式を確認してください。"
+        return "エラー：変換可能なタイムコードが見つかりませんでした。"
         
-    # ヘッダーなどを無視し、データ部分だけのリストを作成
     relevant_lines = lines[start_index:]
 
     blocks = []
@@ -47,6 +41,7 @@ def convert_narration_script(text):
         if not time_match: continue
         
         groups = time_match.groups()
+        # --- ▼▼▼【バグ修正】ここで8個の変数を正しく受け取るように修正しました ▼▼▼ ---
         start_hh, start_mm, start_ss, start_dec, end_hh, end_mm, end_ss, end_dec = [int(g or 0) for g in groups]
 
         # 1. 開始時間のフォーマット（hhを考慮）
@@ -99,7 +94,7 @@ def convert_narration_script(text):
             next_time_match = re.match(time_pattern, next_normalized_time)
             if next_time_match:
                 next_groups = next_time_match.groups()
-                next_start_hh, next_start_mm, next_start_ss, next_start_dec = [int(g or 0) for g in next_groups]
+                next_start_hh, next_start_mm, next_start_ss, next_start_dec, _, _, _, _ = [int(g or 0) for g in next_groups]
                 end_total_seconds = (end_hh * 3600) + (end_mm * 60) + end_ss + (end_dec / 100.0)
                 next_start_total_seconds = (next_start_hh * 3600) + (next_start_mm * 60) + next_start_ss + (next_start_dec / 100.0)
                 if next_start_total_seconds - end_total_seconds < 1.0:
@@ -122,7 +117,7 @@ def convert_narration_script(text):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分（最終版）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分（変更なし）▼▼▼
 # ===============================================================
 st.set_page_config(
     page_title="Caption to Narration",
