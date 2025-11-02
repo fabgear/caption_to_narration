@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （変更なし）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- 【Ver.2：N強制挿入オプション対応】▼▼▼
 # ===============================================================
 def convert_narration_script(text, force_n_insertion):
     to_zenkaku_num = str.maketrans('0123456789', '０１２３４５６７８９')
@@ -109,123 +109,63 @@ def convert_narration_script(text, force_n_insertion):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - 【お客様の理想のUIをHTML/CSSで完全再現】▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - 【お客様のVer.1 UI + Ver.2機能】▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
-# --- お客様が完成させたVer.1のヘルプテキストを、HTMLで改行できるように修正 ---
-help_html_content = """
-【機能詳細】<br>
-・ENDタイム(秒のみ)が自動で入ります<br>
-　分をまたぐ時は(分秒)、次のナレーションと繋がる時は割愛されます<br>
-・頭の「N」は自動で全角に変換され未記載の時は自動挿入されます<br>
-　VOや実況などN以外はそのまま適応されます<br>
-・ナレーション本文の半角英数字は全て全角に変換します
-"""
-
-# --- ▼▼▼【変更点】HTMLとCSSで、お客様の理想のUIを完全に作り上げます ▼▼▼ ---
-st.markdown(f"""
-<style>
-    /* ツールチップ（ポップアップ）のスタイル */
-    .tooltip {{
-        position: relative;
-        display: inline-block;
-        cursor: pointer;
-        color: grey;
-        border: 1px solid #c9c9c9;
-        border-radius: 50%;
-        width: 20px;
-        height: 20px;
-        text-align: center;
-        line-height: 18px;
-        font-size: 13px;
-    }}
-    .tooltip .tooltiptext {{
-        visibility: hidden;
-        width: 450px;
-        background-color: #555;
-        color: #fff;
-        text-align: left;
-        border-radius: 6px;
-        padding: 10px;
-        position: absolute;
-        z-index: 1;
-        bottom: 125%;
-        left: 50%;
-        margin-left: -225px;
-        opacity: 0;
-        transition: opacity 0.3s;
-        font-size: 14px;
-        line-height: 1.6;
-    }}
-    .tooltip:hover .tooltiptext {{
-        visibility: visible;
-        opacity: 1;
-    }}
-    /* Streamlitが作るチェックボックスの余白を調整 */
-    div[data-testid="stCheckbox"] {{
-        padding-top: 5px; /* 上の余白を調整 */
-    }}
-</style>
-
-<p style="margin-bottom: 0;">ナレーション原稿形式に変換します</p>
-<div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
-    <div id="checkbox-container"></div>
-    <div class="tooltip">？
-        <span class="tooltiptext">{help_html_content}</span>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# JavaScriptを使って、Streamlitが生成するチェックボックスを、HTMLで作った場所に移動させる
-st.components.v1.html("""
-    <script>
-        const checkExist = setInterval(function() {{
-           const checkbox = window.parent.document.querySelector('div[data-testid="stCheckbox"]');
-           const container = window.parent.document.getElementById('checkbox-container');
-           if (checkbox && container) {{
-              container.appendChild(checkbox);
-              const label = checkbox.querySelector('label > div');
-              if (label) {{ label.style.display = 'none'; }}
-              
-              const customLabel = document.createElement('span');
-              customLabel.innerText = 'N強制挿入';
-              customLabel.style.paddingLeft = '5px';
-              checkbox.querySelector('label').appendChild(customLabel);
-
-              clearInterval(checkExist);
-           }}
-        }}, 100);
-    </script>
-""", height=0)
-
+st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
 col1, col2 = st.columns(2)
 
-with col1:
-    # チェックボックスは、非表示のコンテナ内で生成し、JSで移動させる
-    with st.container():
-        force_n_insertion = st.checkbox("N強制挿入", value=True, label_visibility="collapsed")
+# お客様が完成させたVer.1のヘルプテキストをそのまま使用
+help_text = """
+【機能詳細】  
+・ENDタイム(秒のみ)が自動で入ります  
+　分をまたぐ時は(分秒)、次のナレーションと繋がる時は割愛されます  
+・頭の「N」は自動で全角に変換され未記載の時は自動挿入されます  
+　VOや実況などN以外はそのまま適応されます  
+・ナレーション本文の半角英数字は全て全角に変換します  
+"""
 
+with col1:
+    st.header('')
+    
+    # --- ▼▼▼【変更点】チェックボックスを、text_areaの「上」に、右寄せで配置します ▼▼▼ ---
+    # 空の列とチェックボックスの列を作り、右側に寄せる
+    _, checkbox_col = st.columns([0.75, 0.25])
+    with checkbox_col:
+        force_n_insertion = st.checkbox("N強制挿入", value=True, help="話者名がない行に、自動で「Ｎ」を補います。")
+
+    # お客様のVer.1のtext_areaを、一切変更せずにそのまま使用します
     input_text = st.text_area(
-        "ナレーション原稿形式に変換します", # このラベルは表示されない
+        "ナレーション原稿形式に変換します", 
         height=500, 
         placeholder="""キャプションをテキストで書き出した形式
-(中略)
+00;00;00;00 - 00;00;02;29
+N ああああ
+
+xmlをサイトで変換した形式
+００：００：１５　〜　００：００：１８
+N ああああ
+
+この２つの形式に対応しています。ペーストして　Ctrl+Enter　を押して下さい
+※混在も可能です
+
 """,
-        label_visibility="collapsed"
+        help=help_text
     )
 
 with col2:
     st.header('')
     if input_text:
         try:
+            # --- ▼▼▼【変更点】チェックボックスの状態を関数に渡します ▼▼▼ ---
             converted_text = convert_narration_script(input_text, force_n_insertion)
             st.text_area("コピーしてお使いください", value=converted_text, height=500)
         except Exception as e:
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
 
-# お客様のフッターをそのまま使用
+# お客様が完成させたVer.1のフッターをそのまま使用
 st.markdown("---")
 st.markdown(
     """
