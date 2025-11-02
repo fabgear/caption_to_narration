@@ -11,8 +11,12 @@ def convert_narration_script(text, n_force_insert_flag=True, mm_ss_colon_flag=Fa
     CONNECTION_THRESHOLD = 1.0 + (10.0 / FRAME_RATE)
 
     to_zenkaku_num = str.maketrans('0123456789', '０１２３４５６７８９')
-    hankaku_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '
-    zenkaku_chars = 'ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９　'
+     hankaku_symbols = '!@#$%&-+='
+    zenkaku_symbols = '！＠＃＄％＆－＋＝'
+    
+    hankaku_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ' + hankaku_symbols
+    zenkaku_chars = 'ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９　' + zenkaku_symbols
+    
     to_zenkaku_all = str.maketrans(hankaku_chars, zenkaku_chars)
     to_hankaku_time = str.maketrans('０１２３４５６７８９：〜', '0123456789:~')
 
