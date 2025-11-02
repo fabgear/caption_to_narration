@@ -3,9 +3,8 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver4.2：N強制挿入ロジック実装）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver4.3：N強制挿入時のレイアウト維持）▼▼▼
 # ===============================================================
-# N_FORCE_INSERT_FLAG を受け取るように変更
 def convert_narration_script(text, n_force_insert_flag=True):
     # --- 設定値 ---
     FRAME_RATE = 30.0
@@ -106,9 +105,7 @@ def convert_narration_script(text, n_force_insert_flag=True):
         text_content = block['text']
         body = ""
 
-        # ▼▼▼【ver4.2 N強制挿入ロジック】if/elseで処理を明確に分岐 ▼▼▼
         if n_force_insert_flag:
-            # チェックあり（ver2のロジックを維持）
             match = re.match(r'^(\S+)\s+(.*)', text_content)
             if match:
                 raw_speaker = match.group(1); body = match.group(2).strip()
@@ -121,17 +118,14 @@ def convert_narration_script(text, n_force_insert_flag=True):
                 else: body = text_content
             if not body: body = "※注意！本文なし！"
         else:
-            # チェックなし（Nを挿入せず、原文をそのまま本文として扱う）
+            # ▼▼▼【ver4.3 修正点】チェックなしの場合の処理 ▼▼▼
             speaker_symbol = '' # 話者記号は空
             body = text_content # 元のテキスト全体を本文として扱う
-            # ただし、spacerの後ろに話者記号の分のスペースがまだ残っているため、
-            # spacerに話者記号とその後のスペース分を追加して、レイアウトのズレを防ぐ
-            spacer += '　　' # NとNの後の全角スペース分（ver2では話者記号がNの後に全角スペースが1つつく構造）
-        # ▲▲▲【ver4.2 N強制挿入ロジック】ここまで ▼▼▼
+            spacer += '　　' # NとNの後の全角スペース分（2文字分）をspacerに追加
+        # ▲▲▲【ver4.3 修正点】ここまで ▼▼▼
 
         body = body.translate(to_zenkaku_all)
         
-        # （中略：終了時間とつながり判定ロジックは変更なし）
         end_string = ""; add_blank_line = True
         
         if i + 1 < len(parsed_blocks):
@@ -155,15 +149,14 @@ def convert_narration_script(text, n_force_insert_flag=True):
                 
             end_string = f" (～{formatted_end_time})"
             
-        # ▼▼▼【ver4.2 修正点】出力形式を調整（speaker_symbolが空の場合も、その後にスペースが続くのを防ぐ）▼▼▼
-        # N強制挿入OFFの場合、speaker_symbolは空なので、spacerに話者分のスペースを統合。
-        # N強制挿入ONの場合、speaker_symbolは'Ｎ'などになり、その後の'　'で本文と区切る
+        # ▼▼▼【ver4.3 修正点】出力形式を調整（speaker_symbolの有無で切り替え）▼▼▼
         if n_force_insert_flag:
+            # チェックあり: タイムコード後のspacer + N + 区切りスペース + 本文
             output_lines.append(f"{formatted_start_time}{spacer}{speaker_symbol}　{body}{end_string}")
         else:
-             # 話者記号がない場合、spacerに組み込んだスペースだけを使う
+             # チェックなし: タイムコード後のspacer + (追加の2文字スペース) + 本文
              output_lines.append(f"{formatted_start_time}{spacer}{body}{end_string}")
-        # ▲▲▲【ver4.2 修正点】ここまで ▼▼▼
+        # ▲▲▲【ver4.3 修正点】ここまで ▼▼▼
 
         if add_blank_line and i < len(parsed_blocks) - 1:
             output_lines.append("")
@@ -171,8 +164,9 @@ def convert_narration_script(text, n_force_insert_flag=True):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - （ver4.2：UIと機能統合）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - （ver4.3：UIと機能統合）▼▼▼
 # ===============================================================
+# （UI部分はver4.1と同じで安定版を維持）
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
@@ -189,7 +183,6 @@ help_text = """
 ・ナレーション本文の半角英数字は全て全角に変換します  
 """
 
-# ▼▼▼【ver4.2 構造】col1 の内部構造は ver2 と同じ ▼▼▼
 with col1:
     st.header('')
     
@@ -211,34 +204,24 @@ N ああああ
         help=help_text
     )
     
-    # ▼▼▼【ver4.2 変更点】チェックボックスを直下に配置 ▼▼▼
     n_force_insert = st.checkbox("N強制挿入", value=True)
 
 
-# ▼▼▼【ver4.2 構造】col2 の内部構造は ver2 と同じにするが、機能を追加 ▼▼▼
 with col2:
     st.header('')
     
     if input_text:
         try:
-            # ▼▼▼【ver4.2 機能連動】変換関数にフラグを渡す ▼▼▼
             converted_text = convert_narration_script(input_text, n_force_insert)
             
-            # テキストエリアの高さは左と同じ500pxに固定
             st.text_area("コピーしてお使いください", value=converted_text, height=500)
             
-            # ----------------------------------------------------------------------------------
-            # 2. 高さを揃えるための隠し要素（ver4.2の工夫）
-            # ----------------------------------------------------------------------------------
-            # 左カラムのチェックボックス（約38px）分の高さを下部に確保し、上のテキストエリアのバランスを維持
             st.markdown('<div style="height: 38px;"></div>', unsafe_allow_html=True)
             
         except Exception as e:
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
-            # エラー時も高さを揃えるための隠し要素を配置
             st.markdown('<div style="height: 38px;"></div>', unsafe_allow_html=True)
     else:
-        # 入力がない場合、右側を完全に空にするが、左カラム全体の高さ分を確保する
         st.markdown('<div style="height: 538px;"></div>', unsafe_allow_html=True) 
 
 
