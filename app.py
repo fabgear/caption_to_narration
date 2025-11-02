@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- 【複数形式対応・最終版】▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- 【ヘッダー無視・最終決定版】▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 変換テーブルの準備 ---
@@ -11,29 +11,42 @@ def convert_narration_script(text):
     hankaku_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '
     zenkaku_chars = 'ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９　'
     to_zenkaku_all = str.maketrans(hankaku_chars, zenkaku_chars)
-    # 全角数字・記号を半角に変換するためのテーブル
     to_hankaku_time = str.maketrans('０１２３４５６７８９：〜', '0123456789:~')
 
     lines = [line.strip() for line in text.strip().split('\n') if line.strip()]
+    
+    # --- ▼▼▼【新機能】データ開始行を自動で探す ▼▼▼ ---
+    start_index = -1
+    time_pattern = r'(\d{2}):(\d{2}):(\d{2})(?:[.;](\d{2}))?\s*-\s*(\d{2}):(\d{2}):(\d{2})(?:[.;](\d{2}))?'
+    
+    for i, line in enumerate(lines):
+        normalized_line = line.translate(to_hankaku_time).replace('~', '-')
+        if re.match(time_pattern, normalized_line):
+            start_index = i
+            break # 最初のタイムコード行を見つけたらループを抜ける
+            
+    if start_index == -1:
+        # もしタイムコードが一つも見つからなければエラーメッセージを返す
+        return "エラー：変換可能なタイムコードが見つかりませんでした。"
+        
+    # ヘッダーなどを無視し、データ部分だけのリストを作成
+    relevant_lines = lines[start_index:]
+    # --- ▲▲▲ 新機能ここまで ▲▲▲ ---
+
     blocks = []
-    for i in range(0, len(lines), 2):
-        if i + 1 < len(lines):
-            blocks.append({'time': lines[i], 'text': lines[i+1]})
+    for i in range(0, len(relevant_lines), 2):
+        if i + 1 < len(relevant_lines):
+            blocks.append({'time': relevant_lines[i], 'text': relevant_lines[i+1]})
 
     output_lines = []
     for i, block in enumerate(blocks):
-        
-        # --- ▼▼▼ ここで入力された時間表記を正規化（ノーマライズ）します ▼▼▼ ---
         normalized_time_str = block['time'].translate(to_hankaku_time).replace('~', '-')
-        
-        # --- ▼▼▼ ここが新しい正規表現です（ミリ秒がなくてもOK） ▼▼▼ ---
-        time_match = re.match(r'(\d{2}):(\d{2}):(\d{2})(?:[.;](\d{2}))?\s*-\s*(\d{2}):(\d{2}):(\d{2})(?:[.;](\d{2}))?', normalized_time_str)
+        time_match = re.match(time_pattern, normalized_time_str)
         if not time_match: continue
         
         groups = time_match.groups()
         start_hh, start_mm, start_ss, start_dec, end_hh, end_mm, end_ss, end_dec = [int(g or 0) for g in groups]
 
-        # 1. 開始時間のフォーマット
         start_total_seconds = start_ss + start_dec / 100.0
         rounded_sec = round(start_total_seconds)
         if rounded_sec >= 60:
@@ -41,7 +54,6 @@ def convert_narration_script(text):
             rounded_sec = 0
         formatted_start_time = f"{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
 
-        # 2. 話者記号と本文のフォーマット
         speaker_symbol = 'Ｎ'
         text_content = block['text'].strip()
         match = re.match(r'^(\S+)\s+(.*)', text_content)
@@ -60,12 +72,11 @@ def convert_narration_script(text):
         if not body: body = "※注意！本文なし！"
         body = body.translate(to_zenkaku_all)
         
-        # 3. 終了時間と空白行の処理
         end_string = ""
         add_blank_line = True
 
         if i + 1 < len(blocks):
-            next_normalized_time = blocks[i+1]['time'].translate(to_hankaku_time)
+            next_normalized_time = blocks[i+1]['time'].translate(to_hankaku_time).replace('~', '-')
             next_time_match = re.match(r'(\d{2}):(\d{2}):(\d{2})(?:[.;](\d{2}))?', next_normalized_time)
             if next_time_match:
                 next_groups = next_time_match.groups()
@@ -82,7 +93,6 @@ def convert_narration_script(text):
                 formatted_end_time = f"{end_mm:02d}{end_ss:02d}".translate(to_zenkaku_num)
             end_string = f"　（～{formatted_end_time}）"
             
-        # 4. 最終的な行を組み立て
         output_lines.append(f"{formatted_start_time}　　{speaker_symbol}　{body}{end_string}")
         if add_blank_line and i < len(blocks) - 1:
             output_lines.append("")
@@ -90,7 +100,7 @@ def convert_narration_script(text):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分（変更なし）▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分（説明文を更新）▼▼▼
 # ===============================================================
 st.set_page_config(
     page_title="Caption to Narration",
@@ -109,6 +119,8 @@ with col1:
         "Premiereで書き出したキャプションをペーストして [Ctrl+Enter] ", 
         height=500, 
         placeholder="""例：
+シーケンス 01
+
 00;00;00;00 - 00;00;02;29
 N ああああ
 
@@ -122,10 +134,8 @@ VO ああああ
 
 ００１５　　ＶＯ　ああああ
 ------------------------------------------------
-【話者名のルール】
-・行頭に「N」や「n」があれば「Ｎ」になります。
-・行頭に「VO」や「木村」などがあれば、それが話者名になります。
-・話者名がない場合は、自動で「Ｎ」が補われます。
+【新機能】
+・先頭のシーケンス名や余分な改行は自動で無視します。
 """
     )
 
