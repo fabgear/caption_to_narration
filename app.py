@@ -101,9 +101,9 @@ col1, col2 = st.columns(2)
 with col1:
     st.header('') # ヘッダーを空にする
     input_text = st.text_area(
-        """Premiereからキャプションを\n
+        """Premiereからキャプションを
         テキストで書き出して中身をペースト Ctrl+Enter ！""", 
-    #    height=500, 
+        height=500, 
         placeholder="""00;00;00;00 - 00;00;02;29
 N ああああ
 
