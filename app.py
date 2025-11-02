@@ -60,7 +60,6 @@ def convert_narration_script(text, force_n_insertion):
         if start_hh > 0: formatted_start_time = f"{start_hh:02d}{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
         else: formatted_start_time = f"{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
 
-        # --- 話者名判定ロジック（Ver.2仕様）---
         speaker_symbol = None
         text_content = block['text']
         body = ""
@@ -110,46 +109,71 @@ def convert_narration_script(text, force_n_insertion):
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - 【お客様のUI + チェックボックス】▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - 【お客様のVer.1 UI + Ver.2機能】▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
-# --- お客様のUIレイアウトを完全に再現 ---
+st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
 col1, col2 = st.columns(2)
 
+# お客様が完成させたVer.1のヘルプテキストをそのまま使用
+help_text = """
+【機能詳細】  
+・ENDタイム(秒のみ)が自動で入ります  
+　分をまたぐ時は(分秒)、次のナレーションと繋がる時は割愛されます  
+・頭の「N」は自動で全角に変換され未記載の時は自動挿入されます  
+　VOや実況などN以外はそのまま適応されます  
+・ナレーション本文の半角英数字は全て全角に変換します  
+"""
+
 with col1:
-    # --- タイトルとチェックボックスを横並びに配置 ---
-    title_col, checkbox_col = st.columns([0.8, 0.2])
-    with title_col:
-        st.subheader("1. 元のテキストを貼り付け")
-        st.caption("Premiere Proから書き出したキャプションテキストを、そのまま貼り付けてください。")
+    st.header('') # お客様のVer.1のレイアウトを維持
+
+    # --- ▼▼▼【変更点】ラベルとチェックボックスを横並びに配置 ▼▼▼ ---
+    label_col, checkbox_col = st.columns([0.8, 0.2])
+    with label_col:
+        st.write("ナレーション原稿形式に変換します") # text_areaのラベルの代わり
     with checkbox_col:
         force_n_insertion = st.checkbox("N強制挿入", value=True, help="話者名がない行に、自動で「Ｎ」を補います。")
     
+    # お客様のVer.1のtext_areaを、labelを非表示にして再現
     input_text = st.text_area(
-        "ここにテキストを貼り付けてください",
-        height=500,
-        placeholder="ここにテキストを貼り付けてください",
-        label_visibility="collapsed"
+        "ナレーション原稿形式に変換します", # このラベルは表示されない
+        height=500, 
+        placeholder="""キャプションをテキストで書き出した形式
+00;00;00;00 - 00;00;02;29
+N ああああ
+
+xmlをサイトで変換した形式
+００：００：１５　〜　００：００：１８
+N ああああ
+
+この２つの形式に対応しています。ペーストして　Ctrl+Enter　を押して下さい
+※混在も可能です
+
+""",
+        help=help_text,
+        label_visibility="collapsed" # ラベルを非表示にする
     )
 
 with col2:
-    st.subheader("2. 変換結果をコピー")
-    st.caption("変換されたテキストをコピーして、ナレーション原稿としてお使いください。")
-    
+    st.header('') # お客様のVer.1のレイアウトを維持
     if input_text:
         try:
+            # --- ▼▼▼【変更点】チェックボックスの状態を関数に渡す ▼▼▼ ---
             converted_text = convert_narration_script(input_text, force_n_insertion)
-            st.text_area(
-                "ここに変換結果が表示されます",
-                value=converted_text, 
-                height=500,
-                label_visibility="collapsed"
-            )
+            st.text_area("コピーしてお使いください", value=converted_text, height=500)
         except Exception as e:
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
 
-# --- お客様のフッターを再現 ---
+# お客様が完成させたVer.1のフッターをそのまま使用
 st.markdown("---")
-st.caption("Created by kimika Inc.")
+st.markdown(
+    """
+    <div style="text-align: right; font-size: 9px; color: #C5D6B9;">
+        © 2025 kimika Inc. All rights reserved.
+    </div>
+    """,
+    unsafe_allow_html=True
+)
