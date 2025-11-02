@@ -5,7 +5,7 @@ import math
 # ===============================================================
 # ▼▼▼ ツールの本体（エンジン部分）- （変更なし）▼▼▼
 # ===============================================================
-def convert_narration_script(text, force_n_insertion):
+def convert_narration_script(text):
     to_zenkaku_num = str.maketrans('0123456789', '０１２３４５６７８９')
     hankaku_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 '
     zenkaku_chars = 'ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ０１２３４５６７８９　'
@@ -60,7 +60,7 @@ def convert_narration_script(text, force_n_insertion):
         if start_hh > 0: formatted_start_time = f"{start_hh:02d}{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
         else: formatted_start_time = f"{start_mm:02d}{rounded_sec:02d}".translate(to_zenkaku_num)
 
-        speaker_symbol = None
+        speaker_symbol = 'Ｎ'
         text_content = block['text']
         body = ""
 
@@ -70,11 +70,10 @@ def convert_narration_script(text, force_n_insertion):
             if raw_speaker.upper() == 'N': speaker_symbol = 'Ｎ'
             else: speaker_symbol = raw_speaker.translate(to_zenkaku_all)
         else:
-            body = text_content.strip()
-            if body.upper() == 'N' or body == 'Ｎ': body = ""
-        
-        if force_n_insertion and speaker_symbol is None:
-            speaker_symbol = 'Ｎ'
+            if text_content.upper() == 'N' or text_content == 'Ｎ': body = ""
+            elif text_content.startswith('Ｎ '): body = text_content[2:].strip()
+            elif text_content.startswith('N '): body = text_content[2:].strip()
+            else: body = text_content
 
         if not body: body = "※注意！本文なし！"
         body = body.translate(to_zenkaku_all)
@@ -98,25 +97,22 @@ def convert_narration_script(text, force_n_insertion):
             else: formatted_end_time = f"{end_ss:02d}".translate(to_zenkaku_num)
             end_string = f"　（～{formatted_end_time}）"
             
-        if speaker_symbol:
-            output_lines.append(f"{formatted_start_time}　　{speaker_symbol}　{body}{end_string}")
-        else:
-            output_lines.append(f"{formatted_start_time}　　{body}{end_string}")
-
+        output_lines.append(f"{formatted_start_time}　　{speaker_symbol}　{body}{end_string}")
         if add_blank_line and i < len(blocks) - 1:
             output_lines.append("")
             
     return "\n".join(output_lines)
 
 # ===============================================================
-# ▼▼▼ Streamlitの画面を作る部分 - 【UIバグ修正・最終完成版】▼▼▼
+# ▼▼▼ Streamlitの画面を作る部分 - 【tooltipのバグ修正版】▼▼▼
 # ===============================================================
 st.set_page_config(page_title="Caption to Narration", page_icon="📝", layout="wide")
 st.title('Caption to Narration')
 
 st.markdown("""<style> textarea::placeholder { font-size: 13px; } </style>""", unsafe_allow_html=True)
+col1, col2 = st.columns(2)
 
-# お客様が完成させたVer.1のヘルプテキストを、一文字も変えずにそのまま使用
+# --- ▼▼▼【変更点】ここでポップアップで表示したいヘルプテキストを先に定義します ▼▼▼ ---
 help_text = """
 【機能詳細】  
 ・ENDタイム(秒のみ)が自動で入ります  
@@ -126,13 +122,10 @@ help_text = """
 ・ナレーション本文の半角英数字は全て全角に変換します  
 """
 
-# --- ▼▼▼【変更点】ここからが、お客様の理想のUIを実現するためのコードです ▼▼▼ ---
-
-# 1. まず、左側の入力欄だけを配置します
-col1, col2 = st.columns(2)
-
 with col1:
-    # お客様のVer.1のtext_areaを、一文字も変えずにそのまま使用
+    st.header('')
+    
+    # --- ▼▼▼【変更点】`st.text_area`に、`help`引数を追加します ▼▼▼ ---
     input_text = st.text_area(
         "ナレーション原稿形式に変換します", 
         height=500, 
@@ -148,31 +141,20 @@ N ああああ
 ※混在も可能です
 
 """,
-        help=help_text
+        help=help_text # ここに追加！
     )
-    # テキストエリアの下に、チェックボックスを配置
-    force_n_insertion = st.checkbox("N強制挿入", value=True)
 
-# 2. 次に、「もし文字が入力されたら」右側の結果表示欄を表示します
-if input_text:
-    with col2:
-        # 右側のタイトルを配置
-        st.write("コピーしてお使いください")
-        
+with col2:
+    st.header('')
+    if input_text:
         try:
-            # チェックボックスの状態を使って変換処理を実行
-            converted_text = convert_narration_script(input_text, force_n_insertion)
-            st.text_area(
-                "コピーしてお使いください", # このラベルは非表示
-                value=converted_text, 
-                height=500,
-                label_visibility="collapsed"
-            )
+            converted_text = convert_narration_script(input_text)
+            st.text_area("コピーしてお使いください", value=converted_text, height=500)
         except Exception as e:
             st.error(f"エラーが発生しました。テキストの形式を確認してください。\n\n詳細: {e}")
 
-# --- お客様が完成させたVer.1のフッターを、一文字も変えずにそのまま使用 ---
-st.markdown("---")
+# --- フッターをカスタマイズ ---
+st.markdown("---") # 区切り線
 st.markdown(
     """
     <div style="text-align: right; font-size: 9px; color: #C5D6B9;">
