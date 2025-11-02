@@ -235,15 +235,13 @@ N ああああ
     )
     
     # ▼▼▼【ver4.2 変更点】チェックボックスを左右に並べる ▼▼▼
-    col_checkbox_left, col_checkbox_right = st.columns(2)
+    col_checkbox_ = st.columns(1)
     
     # N強制挿入はそのまま
-    with col_checkbox_left:
+    with col_checkbox:
         n_force_insert = st.checkbox("N強制挿入", value=True)
     
-    # MM:SS出力オプションを追加
-    with col_checkbox_right:
-        mm_ss_colon = st.checkbox("ｍｍ：ｓｓで出力", value=False)
+    mm_ss_colon = st.checkbox("ｍｍ：ｓｓで出力", value=False)
         # ▲▲▲【ver4.2 変更点】ここまで ▼▼▼
 
 
