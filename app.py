@@ -3,7 +3,7 @@ import re
 import math
 
 # ===============================================================
-# ▼▼▼ ツールの本体（エンジン部分）- （ver2.3：最終Hマーカー番号修正）▼▼▼
+# ▼▼▼ ツールの本体（エンジン部分）- （ver2.4：最終表記調整）▼▼▼
 # ===============================================================
 def convert_narration_script(text):
     # --- 設定値 ---
@@ -72,7 +72,7 @@ def convert_narration_script(text):
         end_hh, end_mm, end_ss, end_fr = block['end_hh'], block['end_mm'], block['end_ss'], block['end_fr']
 
         should_insert_h_marker = False
-        marker_hh_to_display = -1 # ▼▼▼【ver2.3 変更点】表示すべきHを保持する変数を追加 ▼▼▼
+        marker_hh_to_display = -1
         
         if i == 0:
             if start_hh > 0:
@@ -82,23 +82,20 @@ def convert_narration_script(text):
         
         else:
             if start_hh < end_hh:
-                 # (1) Hをまたぐナレーションの場合 (00Hスタートだが01Hで終わる)
                  should_insert_h_marker = True
-                 marker_hh_to_display = end_hh # またいだ後のH (1Hが正解)
+                 marker_hh_to_display = end_hh 
             
             elif start_hh > previous_end_hh: 
-                 # (2) 次のナレーションが新しいHで始まる場合 (01Hで始まる)
                  should_insert_h_marker = True
-                 marker_hh_to_display = start_hh # 新しいH (1Hが正解)
+                 marker_hh_to_display = start_hh 
 
         if should_insert_h_marker:
-             # ▼▼▼【ver2.3 変更点】正しいマーカー番号を使用 ▼▼▼
              output_lines.append("")
-             output_lines.append(f"＜{str(marker_hh_to_display).translate(to_zenkaku_num)}Ｈ＞")
+             # ▼▼▼【ver2.4 変更点】Hマーカーを【X H】形式に変更 ▼▼▼
+             output_lines.append(f"【{str(marker_hh_to_display).translate(to_zenkaku_num)}H】")
              output_lines.append("")
              
         previous_end_hh = end_hh 
-        # ▲▲▲【ver2.3 変更点】ここまで ▼▼▼
 
         # 以下、開始時間、本文、終了時間ロジックはver1.7/1.8/1.9のロジックを維持
         total_seconds_in_minute_loop = (start_mm % 60) * 60 + start_ss
@@ -164,7 +161,8 @@ def convert_narration_script(text):
             else:
                 formatted_end_time = f"{adj_ss:02d}".translate(to_zenkaku_num)
                 
-            end_string = f" (~{formatted_end_time})"
+            # ▼▼▼【ver2.4 変更点】終了時間の波線を全角に変更（括弧は半角維持）▼▼▼
+            end_string = f" (～{formatted_end_time})"
             
         output_lines.append(f"{formatted_start_time}{spacer}{speaker_symbol}　{body}{end_string}")
         
